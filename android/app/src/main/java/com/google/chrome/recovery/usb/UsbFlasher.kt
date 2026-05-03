@@ -6,6 +6,7 @@ import android.hardware.usb.UsbManager
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.google.chrome.recovery.R
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -50,7 +51,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
             val contentLength: Long
 
             if (url.startsWith("content://")) {
-                onStep("Opening local image...")
+                onStep(context.getString(R.string.step_opening_local))
                 val uri = android.net.Uri.parse(url)
                 val cursor = context.contentResolver.query(uri, null, null, null, null)
                 var size = 0L
@@ -107,9 +108,9 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                 
                 contentLength = size
                 inputStream = context.contentResolver.openInputStream(uri) 
-                    ?: return@withContext "Could not open the selected local file. It may have been moved or deleted."
+                    ?: return@withContext context.getString(R.string.error_open_local)
             } else {
-                onStep("Connecting to download server...")
+                onStep(context.getString(R.string.step_connecting_server))
                 val connection = URL(url).openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 15000
@@ -118,7 +119,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
 
                 if (connection.responseCode != HttpURLConnection.HTTP_OK) {
                     Log.e("UsbFlasher", "Server returned HTTP ${connection.responseCode}")
-                    return@withContext "Download server returned an error: HTTP ${connection.responseCode}"
+                    return@withContext context.getString(R.string.error_http_server, connection.responseCode)
                 }
                 contentLength = connection.contentLength.toLong()
                 inputStream = connection.inputStream
@@ -127,7 +128,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
             var estimatedUncompressedSize: Long = if (contentLength > 0) contentLength * 3 else 4L * 1024 * 1024 * 1024 // fallback to 4GB
 
             if (isZip) {
-                onStep(if (url.startsWith("content://")) "Unpacking local image..." else "Downloading and unpacking image...")
+                onStep(if (url.startsWith("content://")) context.getString(R.string.step_unpacking_local) else context.getString(R.string.step_downloading_unpacking))
                 val zipInputStream = ZipInputStream(inputStream)
                 var entry = zipInputStream.nextEntry
                 while (entry != null) {
@@ -142,11 +143,11 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                 if (entry == null) {
                     Log.e("UsbFlasher", "No .bin file found in the downloaded zip.")
                     zipInputStream.close()
-                    return@withContext "The selected ZIP file does not contain a valid Chrome OS recovery image (.bin)."
+                    return@withContext context.getString(R.string.error_invalid_zip)
                 }
                 dataStream = zipInputStream
             } else {
-                onStep(if (url.startsWith("content://")) "Reading local image..." else "Downloading image...")
+                onStep(if (url.startsWith("content://")) context.getString(R.string.step_reading_local) else context.getString(R.string.step_downloading))
                 if (contentLength > 0) estimatedUncompressedSize = contentLength
                 dataStream = inputStream
             }
@@ -155,7 +156,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
             usbConnection = usbManager.openDevice(device)
             if (usbConnection == null) {
                 Log.e("UsbFlasher", "Permission denied for USB device.")
-                return@withContext "Android denied permission to access the USB drive. Please replug the drive and grant permission."
+                return@withContext context.getString(R.string.error_usb_permission)
             }
 
             var endpointIn: android.hardware.usb.UsbEndpoint? = null
@@ -179,18 +180,18 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
 
             if (massStorageInterface == null || endpointIn == null || endpointOut == null) {
                 Log.e("UsbFlasher", "Could not find mass storage interface or endpoints.")
-                return@withContext "The selected USB drive is not recognized as a standard Mass Storage device."
+                return@withContext context.getString(R.string.error_not_mass_storage)
             }
 
             if (!usbConnection.claimInterface(massStorageInterface, true)) {
                 Log.e("UsbFlasher", "Could not claim mass storage interface.")
-                return@withContext "Could not claim the USB drive. Another app might be using it, or it is busy."
+                return@withContext context.getString(R.string.error_claim_interface)
             }
 
             val botDevice = com.google.chrome.recovery.usb.bot.BotDevice(usbConnection, massStorageInterface!!, endpointIn, endpointOut)
 
             // Simulate the streaming write process
-            onStep("Writing to USB...")
+            onStep(context.getString(R.string.step_writing_usb))
             var totalRead: Long = 0
             var currentLba = 0
             var lastUpdateMs = System.currentTimeMillis()
@@ -218,7 +219,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
 
                     if (!botDevice.writeSectors(currentLba, dataToWrite)) {
                         Log.e("UsbFlasher", "Failed to write sectors at LBA $currentLba")
-                        return@withContext "Hardware write error. The USB drive might be corrupted, full, or write-protected."
+                        return@withContext context.getString(R.string.error_hardware_write)
                     }
 
                     currentLba += bytesToWrite / 512
@@ -249,24 +250,24 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                 // padding is automatically 0 since ByteArray initializes to 0
                 if (!botDevice.writeSectors(currentLba, dataToWrite)) {
                     Log.e("UsbFlasher", "Failed to write final sectors at LBA $currentLba")
-                    return@withContext "Hardware write error at the end of the drive. The USB drive might not be large enough."
+                    return@withContext context.getString(R.string.error_drive_too_small)
                 }
             }
             
-            onStep("Verifying...")
+            onStep(context.getString(R.string.step_verifying))
             onProgress(0f)
             // Verification: read the first 128 sectors (64KB) to ensure we wrote successfully
             val verifyData = botDevice.readSectors(0, 128)
             if (verifyData == null) {
                 Log.e("UsbFlasher", "Verification failed: could not read from USB.")
-                return@withContext "Verification failed. The data written to the USB drive could not be read back correctly."
+                return@withContext context.getString(R.string.error_verification_failed)
             }
 
             return@withContext null // Success!
 
         } catch (e: Exception) {
             Log.e("UsbFlasher", "Error flashing to USB", e)
-            return@withContext "An unexpected error occurred: ${e.message ?: e.javaClass.simpleName}"
+            return@withContext context.getString(R.string.error_unexpected, e.message ?: e.javaClass.simpleName)
         } finally {
             try {
                 dataStream?.close()

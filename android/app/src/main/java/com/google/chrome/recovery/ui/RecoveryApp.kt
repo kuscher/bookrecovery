@@ -3,7 +3,7 @@ package com.google.chrome.recovery.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.chrome.recovery.R
 import com.google.chrome.recovery.ui.screens.*
 
 /**
@@ -59,9 +60,13 @@ fun RecoveryApp() {
                         else -> 1
                     }
                     Column {
-                        Text("Book Recovery Utility")
+                        Text(stringResource(R.string.app_name))
                         if (currentRoute != "welcome" && currentRoute != null) {
-                            Text("Step $stepIndex of 4", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
+                            Text(
+                                stringResource(R.string.title_step_of, stepIndex, 4),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                            )
                         }
                     }
                 },
@@ -75,11 +80,11 @@ fun RecoveryApp() {
                     if (currentRoute != "welcome") {
                         if (currentRoute == "flash" || currentRoute == "erase_flash") {
                             IconButton(onClick = { navController.popBackStack("welcome", inclusive = false) }) {
-                                Icon(Icons.Filled.Home, contentDescription = "Home")
+                                Icon(Icons.Filled.Home, contentDescription = stringResource(R.string.action_home))
                             }
                         } else {
                             IconButton(onClick = { navController.navigateUp() }) {
-                                Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                             }
                         }
                     }
@@ -87,14 +92,14 @@ fun RecoveryApp() {
                 actions = {
                     var expanded by remember { mutableStateOf(false) }
                     IconButton(onClick = { expanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                     }
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Erase recovery media") },
+                            text = { Text(stringResource(R.string.action_erase_media)) },
                             onClick = { 
                                 expanded = false
                                 navController.navigate("erase_drive")

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Book Recovery</string>
+    <string name="step_opening_local">Opening local image…</string>
+    <string name="step_connecting_server">Connecting to download server…</string>
+    <string name="step_unpacking_local">Unpacking local image…</string>
+    <string name="step_downloading_unpacking">Downloading and unpacking image…</string>
+    <string name="step_reading_local">Reading local image…</string>
+    <string name="step_downloading">Downloading image…</string>
+    <string name="step_writing_usb">Writing to USB…</string>
+    <string name="step_verifying">Verifying…</string>
+
+    <string name="error_open_local">Could not open the selected local file. It may have been moved or deleted.</string>
+    <string name="error_http_server">Download server returned an error: HTTP %d</string>
+    <string name="error_invalid_zip">The selected ZIP file does not contain a valid Chrome OS recovery image (.bin).</string>
+    <string name="error_usb_permission">Android denied permission to access the USB drive. Please replug the drive and grant permission.</string>
+    <string name="error_not_mass_storage">The selected USB drive is not recognized as a standard Mass Storage device.</string>
+    <string name="error_claim_interface">Could not claim the USB drive. Another app might be using it, or it is busy.</string>
+    <string name="error_hardware_write">Hardware write error. The USB drive might be corrupted, full, or write-protected.</string>
+    <string name="error_drive_too_small">Hardware write error at the end of the drive. The USB drive might not be large enough.</string>
+    <string name="error_verification_failed">Verification failed. The data written to the USB drive could not be read back correctly.</string>
+    <string name="error_unexpected">An unexpected error occurred: %s</string>
+
+    <!-- UI Strings -->
+    <string name="title_step_of">Step %1$d of %2$d</string>
+    <string name="action_home">Home</string>
+    <string name="action_back">Back</string>
+    <string name="action_more">More options</string>
+    <string name="action_erase_media">Erase recovery media</string>
+</resources>

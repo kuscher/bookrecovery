@@ -28,6 +28,66 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
 
     var showErasePrompt by remember { mutableStateOf(false) }
 
+    val ACTION_USB_PERMISSION = "com.google.chrome.recovery.USB_PERMISSION"
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var permissionError by remember { mutableStateOf<String?>(null) }
+
+    DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: android.content.Intent) {
+                if (ACTION_USB_PERMISSION == intent.action) {
+                    synchronized(this) {
+                        val device: UsbDevice? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                        }
+                        if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                            device?.let {
+                                pendingAction?.invoke()
+                                pendingAction = null
+                            }
+                        } else {
+                            android.util.Log.d("USB", "permission denied for device $device")
+                            permissionError = "Permission denied for USB device."
+                            pendingAction = null
+                        }
+                    }
+                }
+            }
+        }
+        val filter = android.content.IntentFilter(ACTION_USB_PERMISSION)
+        androidx.core.content.ContextCompat.registerReceiver(
+            context, 
+            receiver, 
+            filter, 
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
+
+    val handleDeviceSelection: (UsbDevice, () -> Unit) -> Unit = { device, action ->
+        if (usbManager.hasPermission(device)) {
+            action()
+        } else {
+            pendingAction = action
+            permissionError = null
+            val permissionIntent = android.app.PendingIntent.getBroadcast(
+                context, 
+                0, 
+                android.content.Intent(ACTION_USB_PERMISSION).apply { setPackage(context.packageName) }, 
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) 
+                    android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT 
+                else 
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            usbManager.requestPermission(device, permissionIntent)
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Insert your USB flash drive or SD card", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
@@ -72,7 +132,7 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
                     if (!isEraseFlow) {
                         showErasePrompt = true
                     } else {
-                        selectedDevice?.let { onNext(it) }
+                        selectedDevice?.let { dev -> handleDeviceSelection(dev) { onNext(dev) } }
                     }
                 },
                 enabled = selectedDevice != null
@@ -90,7 +150,11 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
             confirmButton = {
                 Button(onClick = {
                     showErasePrompt = false
-                    selectedDevice?.let { onEraseFirst?.invoke(it) ?: onNext(it) }
+                    selectedDevice?.let { dev ->
+                        handleDeviceSelection(dev) {
+                            onEraseFirst?.invoke(dev) ?: onNext(dev)
+                        }
+                    }
                 }) {
                     Text("Yes, erase first")
                 }
@@ -98,9 +162,22 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
             dismissButton = {
                 TextButton(onClick = {
                     showErasePrompt = false
-                    selectedDevice?.let { onNext(it) }
+                    selectedDevice?.let { dev -> handleDeviceSelection(dev) { onNext(dev) } }
                 }) {
                     Text("Skip and proceed")
+                }
+            }
+        )
+    }
+
+    if (permissionError != null) {
+        AlertDialog(
+            onDismissRequest = { permissionError = null },
+            title = { Text("Permission Required") },
+            text = { Text(permissionError ?: "") },
+            confirmButton = {
+                Button(onClick = { permissionError = null }) {
+                    Text("OK")
                 }
             }
         )
