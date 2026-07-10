@@ -58,7 +58,7 @@ fun RecoveryApp() {
                 title = { 
                     val stepIndex = when (currentRoute) {
                         Route.Welcome.pattern -> 1
-                        Route.Identify.pattern, Route.SelectModel.pattern -> 2
+                        Route.Identify.pattern, Route.SelectModel.pattern, Route.SelectChannel.pattern -> 2
                         Route.SelectDrive.pattern, Route.EraseDrive.pattern -> 3
                         Route.Flash.pattern, Route.EraseFlash.pattern -> 4
                         else -> 1
