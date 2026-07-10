@@ -31,9 +31,32 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
     val context = LocalContext.current
     val usbManager = remember { context.getSystemService(Context.USB_SERVICE) as UsbManager }
     var selectedDevice by remember { mutableStateOf<UsbDevice?>(null) }
-    
-    // In a real app we would listen for attach/detach broadcasts
-    val deviceList = remember { usbManager.deviceList.values.toList() }
+
+    // Keep the device list live: plugging in a drive while this screen is open
+    // (the natural order of operations) should make it appear without leaving
+    // and re-entering. Detach also clears a now-stale selection.
+    var deviceList by remember { mutableStateOf(usbManager.deviceList.values.toList()) }
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                deviceList = usbManager.deviceList.values.toList()
+                if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED &&
+                    selectedDevice != null && selectedDevice !in deviceList
+                ) {
+                    selectedDevice = null
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        }
+        // NOT_EXPORTED still receives system broadcasts; it only blocks other apps.
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
 
     var showErasePrompt by remember { mutableStateOf(false) }
 
