@@ -107,21 +107,28 @@ fun RecoveryApp() {
                     }
                 },
                 actions = {
-                    var expanded by remember { mutableStateOf(false) }
-                    IconButton(onClick = { expanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
-                    }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.action_erase_media)) },
-                            onClick = { 
-                                expanded = false
-                                navController.navigate(Route.EraseDrive.pattern)
-                            }
-                        )
+                    // Hide the erase action while an operation is running (flash or
+                    // erase): navigating away would abandon a real write/wipe in
+                    // progress. It only makes sense on the setup screens.
+                    val isOperationRunning = currentRoute == Route.Flash.pattern ||
+                        currentRoute == Route.EraseFlash.pattern
+                    if (!isOperationRunning) {
+                        var expanded by remember { mutableStateOf(false) }
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_erase_media)) },
+                                onClick = {
+                                    expanded = false
+                                    navController.navigate(Route.EraseDrive.pattern)
+                                }
+                            )
+                        }
                     }
                 }
             )
