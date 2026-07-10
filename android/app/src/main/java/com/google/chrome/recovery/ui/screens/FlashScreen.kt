@@ -34,7 +34,8 @@ import com.google.chrome.recovery.ui.game.DinoGameEngine
 import com.google.chrome.recovery.ui.game.DinoHighScore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import com.google.chrome.recovery.ui.wizardContentWidth
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowSizeClass
 
 /**
  * FlashScreen renders the progress and outcome of the flash flow.
@@ -154,100 +155,141 @@ fun FlashScreen(
         gameEngine.highScore = DinoHighScore.flow(context).first()
     }
 
+    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
+    // Give the game a little more room on expanded windows (tablet landscape,
+    // desktop) while keeping it at the content width on compact/medium (phones,
+    // tablet portrait). Read live, so a rotation re-picks the cap.
+    val gameWidthCap = if (windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)) {
+        FlashContentMaxWidth + 120.dp
+    } else {
+        FlashContentMaxWidth
+    }
+
     Column(
-        modifier = Modifier.wizardContentWidth().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (!uiState.isFinished && gameVisible) {
-            // The game never obscures progress: it sits above, and the status
-            // text + progress bar below stay exactly where they were.
-            DinoGameCanvas(
-                engine = gameEngine,
-                active = !uiState.isFinished,
-                onCrashed = { _, highScore ->
-                    gameScope.launch { DinoHighScore.save(context, highScore) }
-                },
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-        }
-
-        if (uiState.isFinished) {
-            if (!uiState.hasError) {
-                MorphingSuccessBadge(
-                    contentDescription = stringResource(R.string.flash_success_icon),
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-            } else {
-                ErrorBadge(
-                    contentDescription = stringResource(R.string.flash_error_icon),
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-            }
-        }
-
-        Text(
-            text = uiState.stepText,
-            style = if (uiState.isFinished) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 32.dp),
-            textAlign = TextAlign.Center
-        )
-
+        // The game and its "tap to play" invitation share one reserved,
+        // fixed-height slot that is present for the whole active-flash phase, so
+        // toggling the game on never shifts the status/progress block below it.
+        // The slot spans the full width (so the game can be wider than the content
+        // column) while the game itself is capped and centered within it.
         if (!uiState.isFinished && !uiState.isErasing) {
-            LinearWavyProgressIndicator(
-                progress = { animatedProgress },
-                // The wave settles flat as the write completes, per the Expressive spec.
-                amplitude = { p -> if (p >= 1f) 0f else 1f },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            if (uiState.isVerifying) {
-                // Skipping verification is allowed and is not a failure; cancelling
-                // and erasing mid-verification would destroy a completed write.
-                OutlinedButton(onClick = { viewModel.skipVerification() }) {
-                    Text(stringResource(R.string.flash_skip_verification))
-                }
-            } else {
-                OutlinedButton(onClick = { viewModel.cancelFlashAndReset() }) {
-                    Text(stringResource(R.string.flash_cancel_and_reset))
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val gameWidth = maxWidth.coerceAtMost(gameWidthCap)
+                val gameHeight = gameWidth * (DinoGameEngine.Config.HEIGHT / DinoGameEngine.Config.WIDTH)
+                Box(
+                    modifier = Modifier.width(gameWidth).height(gameHeight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (gameVisible) {
+                        DinoGameCanvas(
+                            engine = gameEngine,
+                            active = !uiState.isFinished,
+                            onCrashed = { _, highScore ->
+                                gameScope.launch { DinoHighScore.save(context, highScore) }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        TextButton(onClick = { gameVisible = true }) {
+                            Text(stringResource(R.string.flash_play_game))
+                        }
+                    }
                 }
             }
-            if (!gameVisible) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(onClick = { gameVisible = true }) {
-                    Text(stringResource(R.string.flash_play_game))
+        }
+
+        // Status, progress, and actions — capped to the readable content width and
+        // centered. This is the section that must stay put as the game toggles.
+        Column(
+            modifier = Modifier
+                .widthIn(max = FlashContentMaxWidth)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (uiState.isFinished) {
+                if (!uiState.hasError) {
+                    MorphingSuccessBadge(
+                        contentDescription = stringResource(R.string.flash_success_icon),
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                } else {
+                    ErrorBadge(
+                        contentDescription = stringResource(R.string.flash_error_icon),
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
                 }
             }
-        } else if (uiState.isErasing && !uiState.isFinished) {
-            LinearWavyProgressIndicator(
-                progress = { animatedProgress },
-                amplitude = { p -> if (p >= 1f) 0f else 1f },
-                modifier = Modifier.fillMaxWidth()
-            )
+
             Text(
-                text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp)
+                text = uiState.stepText,
+                style = if (uiState.isFinished) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 32.dp),
+                textAlign = TextAlign.Center
             )
-        } else {
-            if (uiState.canRetry) {
-                Button(onClick = { viewModel.retryFlash() }) {
-                    Text(stringResource(R.string.flash_retry))
+
+            if (!uiState.isFinished && !uiState.isErasing) {
+                LinearWavyProgressIndicator(
+                    progress = { animatedProgress },
+                    // The wave settles flat as the write completes, per the Expressive spec.
+                    amplitude = { p -> if (p >= 1f) 0f else 1f },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                if (uiState.isVerifying) {
+                    // Skipping verification is allowed and is not a failure; cancelling
+                    // and erasing mid-verification would destroy a completed write.
+                    OutlinedButton(onClick = { viewModel.skipVerification() }) {
+                        Text(stringResource(R.string.flash_skip_verification))
+                    }
+                } else {
+                    OutlinedButton(onClick = { viewModel.cancelFlashAndReset() }) {
+                        Text(stringResource(R.string.flash_cancel_and_reset))
+                    }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(onClick = onFinish) {
-                    Text(stringResource(R.string.action_back_to_home))
-                }
+            } else if (uiState.isErasing && !uiState.isFinished) {
+                LinearWavyProgressIndicator(
+                    progress = { animatedProgress },
+                    amplitude = { p -> if (p >= 1f) 0f else 1f },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             } else {
-                Button(onClick = onFinish) {
-                    Text(stringResource(R.string.action_back_to_home))
+                if (uiState.canRetry) {
+                    Button(onClick = { viewModel.retryFlash() }) {
+                        Text(stringResource(R.string.flash_retry))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(onClick = onFinish) {
+                        Text(stringResource(R.string.action_back_to_home))
+                    }
+                } else {
+                    Button(onClick = onFinish) {
+                        Text(stringResource(R.string.action_back_to_home))
+                    }
                 }
             }
         }
     }
 }
+
+/** Readable width cap for the flash screen's status/progress column (matches the wizard content width). */
+private val FlashContentMaxWidth = 600.dp
