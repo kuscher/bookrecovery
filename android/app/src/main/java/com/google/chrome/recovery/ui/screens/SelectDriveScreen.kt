@@ -18,6 +18,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +31,7 @@ import com.google.chrome.recovery.ui.wizardContentWidth
 @Composable
 fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit, onEraseFirst: ((UsbDevice) -> Unit)? = null) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val usbManager = remember { context.getSystemService(Context.USB_SERVICE) as UsbManager }
     var selectedDevice by remember { mutableStateOf<UsbDevice?>(null) }
 
@@ -137,7 +140,12 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .clickable { selectedDevice = device },
+                            .clickable {
+                                if (selectedDevice != device) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                }
+                                selectedDevice = device
+                            },
                         colors = CardDefaults.cardColors(
                             containerColor = if (selectedDevice == device) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                         )

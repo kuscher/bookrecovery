@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -106,6 +108,18 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
     val isBackgrounded = isLifecycleBackgrounded || !isWindowFocused
     LaunchedEffect(isBackgrounded) {
         viewModel.onBackgroundedChanged(isBackgrounded)
+    }
+
+    // One distinct haptic at the moment the flow ends: Confirm for success,
+    // Reject for failure. performHapticFeedback respects the system's
+    // touch-feedback setting, so users who disabled haptics feel nothing.
+    val haptics = LocalHapticFeedback.current
+    LaunchedEffect(uiState.isFinished) {
+        if (uiState.isFinished) {
+            haptics.performHapticFeedback(
+                if (uiState.hasError) HapticFeedbackType.Reject else HapticFeedbackType.Confirm
+            )
+        }
     }
 
     // Animated with the spec the wavy indicator is designed around, so discrete

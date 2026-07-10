@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
@@ -28,6 +30,7 @@ import com.google.chrome.recovery.ui.wizardContentWidth
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SelectChannelScreen(modelName: String, onNext: (String) -> Unit) {
+    val haptics = LocalHapticFeedback.current
     val repository = RecoveryRepository.instance
     var images by remember { mutableStateOf<List<RecoveryImage>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -56,7 +59,12 @@ fun SelectChannelScreen(modelName: String, onNext: (String) -> Unit) {
                 availableImages.forEach { image ->
                     val channelLabel = image.channel ?: stringResource(R.string.select_channel_default_label)
                     ElevatedButton(
-                        onClick = { image.url?.let { onNext(it) } },
+                        onClick = {
+                            image.url?.let {
+                                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                onNext(it)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                     ) {
                         Text(channelLabel)

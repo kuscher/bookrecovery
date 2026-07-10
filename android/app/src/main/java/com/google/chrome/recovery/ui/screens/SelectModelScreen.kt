@@ -17,6 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -183,6 +185,7 @@ private fun ModelDetailPane(
     images: List<RecoveryImage>,
     onImageSelected: (String) -> Unit
 ) {
+    val haptics = LocalHapticFeedback.current
     if (modelName == null) {
         Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
             Text(
@@ -223,7 +226,12 @@ private fun ModelDetailPane(
             availableImages.forEach { image ->
                 val channelLabel = image.channel ?: stringResource(R.string.select_channel_default_label)
                 ElevatedButton(
-                    onClick = { image.url?.let { onImageSelected(it) } },
+                    onClick = {
+                        image.url?.let {
+                            haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            onImageSelected(it)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 ) {
                     Text(channelLabel)
@@ -248,6 +256,7 @@ private fun ModelDropdowns(
     isLoading: Boolean,
     onNext: (String) -> Unit
 ) {
+    val haptics = LocalHapticFeedback.current
     var selectedManufacturer by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedModelName by rememberSaveable { mutableStateOf<String?>(null) }
     var mfrExpanded by remember { mutableStateOf(false) }
@@ -375,7 +384,12 @@ private fun ModelDropdowns(
 
             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                 Button(
-                    onClick = { selectedModelName?.let { onNext(it) } },
+                    onClick = {
+                        selectedModelName?.let {
+                            haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            onNext(it)
+                        }
+                    },
                     enabled = selectedModelName != null
                 ) {
                     Text(stringResource(R.string.action_continue))

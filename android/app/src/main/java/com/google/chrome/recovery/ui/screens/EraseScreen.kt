@@ -7,6 +7,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,6 +22,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
     var progress by remember { mutableStateOf(0f) }
     var isFinished by remember { mutableStateOf(false) }
 
+    val haptics = LocalHapticFeedback.current
     LaunchedEffect(Unit) {
         // Simulate erasing by writing zeroes (we don't actually write since we don't have block perms)
         for (i in 1..100) {
@@ -30,6 +33,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         currentStepRes = R.string.erase_success
         progress = 1f
         isFinished = true
+        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
     }
 
     val animatedProgress by animateFloatAsState(
