@@ -95,7 +95,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                     label = { Text(stringResource(R.string.select_model_manufacturer_label)) },
                     readOnly = false,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mfrExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                 )
                 if (filteredManufacturers.isNotEmpty()) {
                     DropdownMenu(
@@ -140,7 +140,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                     readOnly = false,
                     enabled = selectedManufacturer != null,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                 )
                 if (filteredModelNames.isNotEmpty() && selectedManufacturer != null) {
                     DropdownMenu(

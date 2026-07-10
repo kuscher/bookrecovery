@@ -214,7 +214,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
             val chunkBuffer = ByteArray(1024 * 128)
             var chunkPos = 0
 
-            var bytesRead = dataStream!!.read(readBuffer)
+            var bytesRead = dataStream.read(readBuffer)
             while (bytesRead != -1) {
                 if (isCancelled) {
                     return@withContext RESULT_CANCELLED
