@@ -85,14 +85,14 @@
     <string name="permission_denied_usb">Permission denied for USB device.</string>
 
     <!-- Erase screen -->
-    <string name="erase_step">Erasing...</string>
+    <string name="erase_step">Erasing…</string>
     <string name="erase_success">Success! Your recovery media has been erased.</string>
     <string name="erase_success_detail">The drive\'s partition information was cleared. Your computer may ask to format it before its next use.</string>
     <string name="erase_do_not_remove">Please do not remove your recovery media.</string>
 
     <!-- Flash screen -->
-    <string name="flash_step_starting">Starting...</string>
-    <string name="flash_step_erasing">Erasing media...</string>
+    <string name="flash_step_starting">Starting…</string>
+    <string name="flash_step_erasing">Erasing media…</string>
     <string name="flash_reset_success">Success! Your USB has been reset.</string>
     <string name="flash_success">Success! Your recovery media is ready.</string>
     <string name="flash_success_verified">Success! Your recovery media is ready and matches Google\'s published checksum.</string>
@@ -110,32 +110,55 @@
     <!-- Flash notifications -->
     <string name="notif_channel_name">Flash Progress</string>
     <string name="notif_preparing_title">Preparing to flash</string>
-    <string name="notif_preparing_text">Initializing...</string>
+    <string name="notif_preparing_text">Initializing…</string>
     <string name="notif_preparing_chip">Started</string>
     <string name="notif_percent_complete">%1$.1f%% complete</string>
-    <string name="notif_erasing_title">Erasing media...</string>
+    <string name="notif_erasing_title">Erasing media…</string>
     <string name="notif_erasing_chip">Erasing</string>
-    <string name="notif_verifying_title">Verifying media...</string>
+    <string name="notif_verifying_title">Verifying media…</string>
     <string name="notif_verifying_chip">Verifying</string>
     <string name="notif_success_title">Recovery Media Ready</string>
     <string name="notif_error_title">Error creating media</string>
+
+    <!-- Decorative on-screen quips rotated beneath the real status line during
+         long operations. Never replace the technical status; hidden from
+         accessibility services entirely (the real status is what announces). -->
+    <string-array name="flash_quips_flashing">
+        <item>Convincing electrons to line up…</item>
+        <item>Politely asking the USB drive to hold still…</item>
+        <item>Un-bricking at the speed of SCSI…</item>
+        <item>Reticulating boot partitions…</item>
+        <item>This is faster than mailing a USB stick.</item>
+        <item>Somewhere, a Chromebook is about to feel much better.</item>
+    </string-array>
+    <string-array name="flash_quips_verifying">
+        <item>Trust, but verify. Currently verifying…</item>
+        <item>Reading it all back. Twice would be paranoid.</item>
+        <item>Math is happening. SHA-1 of it.</item>
+        <item>Powerwash? Never heard of her.</item>
+    </string-array>
+    <string-array name="flash_quips_erasing">
+        <item>Sweeping up old partitions…</item>
+        <item>Asking the old bits to leave. Politely.</item>
+        <item>Making room. It\'s very zen.</item>
+    </string-array>
 
     <!-- Rotating titles shown on the flash notification. The chips array holds the
          compact variants that fit the API 36 status-bar Live Update chip; the two
          arrays are index-aligned and must stay the same length. -->
     <string-array name="flash_fun_words">
-        <item>Flashing...</item>
-        <item>Fluxabilating...</item>
-        <item>Gone fishing...</item>
-        <item>Crunching bytes...</item>
-        <item>Reticulating splines...</item>
-        <item>Writing magic...</item>
-        <item>Doing the heavy lifting...</item>
+        <item>Flashing…</item>
+        <item>Fluxabilating…</item>
+        <item>Gone fishing…</item>
+        <item>Crunching bytes…</item>
+        <item>Reticulating splines…</item>
+        <item>Writing magic…</item>
+        <item>Doing the heavy lifting…</item>
     </string-array>
     <string-array name="flash_fun_chips">
         <item>Working</item>
         <item>Writing</item>
-        <item>Wait...</item>
+        <item>Wait…</item>
         <item>Almost</item>
         <item>Hold on</item>
         <item>Steady</item>

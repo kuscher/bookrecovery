@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.hardware.usb.UsbDevice
 import android.os.Build
+import android.provider.Settings
 import android.view.ViewTreeObserver
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.core.animateFloatAsState
@@ -18,7 +19,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -171,10 +177,10 @@ fun FlashScreen(
         verticalArrangement = Arrangement.Center
     ) {
         // The game and its "tap to play" invitation share one reserved,
-        // fixed-height slot that is present for the whole active-flash phase, so
-        // toggling the game on never shifts the status/progress block below it.
-        // The slot spans the full width (so the game can be wider than the content
-        // column) while the game itself is capped and centered within it.
+        // fixed-height slot present for the whole active-flash phase, so toggling
+        // the game on never shifts the status/progress block below it. The slot
+        // spans the full width (so the game can be wider than the content column)
+        // while the game itself is capped and centered within it.
         if (!uiState.isFinished && !uiState.isErasing) {
             BoxWithConstraints(
                 modifier = Modifier
@@ -233,7 +239,11 @@ fun FlashScreen(
             Text(
                 text = uiState.stepText,
                 style = if (uiState.isFinished) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 32.dp),
+                modifier = Modifier
+                    .padding(bottom = 32.dp)
+                    // The technical status is the accessibility truth: announce its
+                    // changes. The decorative quips below are semantically invisible.
+                    .semantics { liveRegion = LiveRegionMode.Polite },
                 textAlign = TextAlign.Center
             )
 
@@ -287,9 +297,76 @@ fun FlashScreen(
                     }
                 }
             }
+
+            // Decorative, phase-appropriate quips beneath the real status — shown
+            // for any non-terminal phase, scoped inside the content column.
+            if (!uiState.isFinished) {
+                Spacer(modifier = Modifier.height(16.dp))
+                RotatingQuip(
+                    quipsRes = when {
+                        uiState.isErasing -> R.array.flash_quips_erasing
+                        uiState.isVerifying -> R.array.flash_quips_verifying
+                        else -> R.array.flash_quips_flashing
+                    }
+                )
+            }
         }
     }
 }
 
 /** Readable width cap for the flash screen's status/progress column (matches the wizard content width). */
 private val FlashContentMaxWidth = 600.dp
+
+/**
+ * A decorative status quip rotated every eight seconds beneath the real
+ * technical status. Rules of the house:
+ * - It never replaces the honest step text; it sits below it, visually quieter.
+ * - It is invisible to accessibility services (clearAndSetSemantics) — the
+ *   real status line carries the polite live region.
+ * - The crossfade is skipped entirely when the user has animations disabled.
+ * - The rotation coroutine is scoped to composition, so no timer outlives
+ *   the screen.
+ */
+@Composable
+private fun RotatingQuip(quipsRes: Int, modifier: Modifier = Modifier) {
+    val quips = stringArrayResource(quipsRes)
+    if (quips.isEmpty()) return
+
+    var index by rememberSaveable(quipsRes) { mutableIntStateOf(0) }
+    LaunchedEffect(quipsRes) {
+        while (true) {
+            kotlinx.coroutines.delay(QUIP_ROTATION_MS)
+            index++
+        }
+    }
+
+    val context = LocalContext.current
+    val animationsDisabled = remember {
+        Settings.Global.getFloat(
+            context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f
+        ) == 0f
+    }
+
+    val quip = quips[index % quips.size]
+    Box(modifier = modifier.clearAndSetSemantics { }) {
+        if (animationsDisabled) {
+            QuipText(quip)
+        } else {
+            androidx.compose.animation.Crossfade(targetState = quip, label = "quip") { text ->
+                QuipText(text)
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuipText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
+    )
+}
+
+private const val QUIP_ROTATION_MS = 8_000L
