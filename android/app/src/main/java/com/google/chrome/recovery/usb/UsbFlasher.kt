@@ -33,6 +33,14 @@ import java.util.zip.ZipInputStream
  */
 class UsbFlasher(private val usbManager: UsbManager, private val context: Context) {
 
+    companion object {
+        /**
+         * Sentinel returned by [flashImageToUsb] when the write stopped because
+         * [cancel] was called, as opposed to a user-facing error message.
+         */
+        const val RESULT_CANCELLED = "Cancelled"
+    }
+
     @Volatile
     private var isCancelled = false
 
@@ -210,7 +218,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
             var bytesRead = dataStream!!.read(readBuffer)
             while (bytesRead != -1) {
                 if (isCancelled) {
-                    return@withContext "Cancelled"
+                    return@withContext RESULT_CANCELLED
                 }
                 
                 // Append read bytes to chunkBuffer
