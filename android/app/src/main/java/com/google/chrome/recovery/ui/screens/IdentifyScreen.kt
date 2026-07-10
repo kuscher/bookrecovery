@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
 import com.google.chrome.recovery.data.RecoveryImage
 import com.google.chrome.recovery.data.RecoveryRepository
+import com.google.chrome.recovery.ui.wizardContentWidth
 
 @OptIn(ExperimentalMaterial3Api::class)
 /**
@@ -73,7 +74,7 @@ fun IdentifyScreen(
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .wizardContentWidth()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally

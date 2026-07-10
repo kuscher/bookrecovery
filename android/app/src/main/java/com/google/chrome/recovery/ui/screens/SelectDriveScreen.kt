@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.chrome.recovery.R
+import com.google.chrome.recovery.ui.wizardContentWidth
 
 @Composable
 fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit, onEraseFirst: ((UsbDevice) -> Unit)? = null) {
@@ -95,7 +96,7 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.wizardContentWidth().padding(16.dp)) {
         Text(stringResource(R.string.select_drive_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
         Text(stringResource(R.string.select_drive_body), style = MaterialTheme.typography.bodyLarge)

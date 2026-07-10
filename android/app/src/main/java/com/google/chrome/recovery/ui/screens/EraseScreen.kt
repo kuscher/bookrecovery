@@ -10,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
+import com.google.chrome.recovery.ui.wizardContentWidth
 import kotlinx.coroutines.delay
 
 @Composable
@@ -31,7 +32,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.wizardContentWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

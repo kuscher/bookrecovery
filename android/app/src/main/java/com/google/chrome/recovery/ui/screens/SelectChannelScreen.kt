@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
 import com.google.chrome.recovery.data.RecoveryImage
 import com.google.chrome.recovery.data.RecoveryRepository
+import com.google.chrome.recovery.ui.wizardContentWidth
 
 /**
  * The Channel Selection Screen (Wizard Step 3).
@@ -39,7 +40,7 @@ fun SelectChannelScreen(modelName: String, onNext: (String) -> Unit) {
         images.filter { it.name == modelName }.sortedBy { it.channel }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+    Column(modifier = Modifier.wizardContentWidth().padding(24.dp)) {
         Text(stringResource(R.string.select_channel_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(8.dp))
         Text(stringResource(R.string.select_channel_body, modelName), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

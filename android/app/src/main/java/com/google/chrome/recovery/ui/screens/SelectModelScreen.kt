@@ -13,6 +13,7 @@ import androidx.compose.ui.window.PopupProperties
 import com.google.chrome.recovery.R
 import com.google.chrome.recovery.data.RecoveryImage
 import com.google.chrome.recovery.data.RecoveryRepository
+import com.google.chrome.recovery.ui.wizardContentWidth
 
 @OptIn(ExperimentalMaterial3Api::class)
 /**
@@ -67,7 +68,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
 
 
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.wizardContentWidth().padding(16.dp)) {
         Text(stringResource(R.string.identify_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
         Text(stringResource(R.string.select_model_body), style = MaterialTheme.typography.bodyLarge)
