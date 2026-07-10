@@ -129,13 +129,13 @@
         <item>Un-bricking at the speed of SCSI…</item>
         <item>Reticulating boot partitions…</item>
         <item>This is faster than mailing a USB stick.</item>
-        <item>Somewhere, a Chromebook is about to feel much better.</item>
+        <item>Somewhere, a Book is about to feel much better.</item>
     </string-array>
     <string-array name="flash_quips_verifying">
         <item>Trust, but verify. Currently verifying…</item>
         <item>Reading it all back. Twice would be paranoid.</item>
         <item>Math is happening. SHA-1 of it.</item>
-        <item>Powerwash? Never heard of her.</item>
+        <item>Checking every byte, then checking again.</item>
     </string-array>
     <string-array name="flash_quips_erasing">
         <item>Sweeping up old partitions…</item>
