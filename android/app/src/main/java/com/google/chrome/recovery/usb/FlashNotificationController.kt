@@ -15,6 +15,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.chrome.recovery.MainActivity
+import com.google.chrome.recovery.R
 import java.util.Locale
 
 /**
@@ -52,9 +53,9 @@ class FlashNotificationController(private val context: Context) {
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     // Rotating titles shown while flashing. The status-bar chip only fits a short
-    // word, hence the parallel list of compact variants.
-    private val funWords = listOf("Flashing...", "Fluxabilating...", "Gone fishing...", "Crunching bytes...", "Reticulating splines...", "Writing magic...", "Doing the heavy lifting...")
-    private val shortChipTexts = listOf("Working", "Writing", "Wait...", "Almost", "Hold on", "Steady", "Busy")
+    // word, hence the parallel array of compact variants.
+    private val funWords = context.resources.getStringArray(R.array.flash_fun_words)
+    private val shortChipTexts = context.resources.getStringArray(R.array.flash_fun_chips)
 
     private val pendingIntent: PendingIntent by lazy {
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -70,7 +71,7 @@ class FlashNotificationController(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Flash Progress",
+                context.getString(R.string.notif_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             )
             notificationManager.createNotificationChannel(channel)
@@ -83,7 +84,12 @@ class FlashNotificationController(private val context: Context) {
      * minimizes during an erase-first pass.
      */
     fun startKeepAlive() {
-        val initialNotif = buildProgressNotification(0f, "Preparing to flash", "Initializing...", "Started")
+        val initialNotif = buildProgressNotification(
+            0f,
+            context.getString(R.string.notif_preparing_title),
+            context.getString(R.string.notif_preparing_text),
+            context.getString(R.string.notif_preparing_chip)
+        )
         KeepAliveService.currentNotification = initialNotif
 
         val serviceIntent = Intent(context, KeepAliveService::class.java)
@@ -109,9 +115,9 @@ class FlashNotificationController(private val context: Context) {
      */
     fun postProgress(progress: Float, isErasing: Boolean) {
         val wordIndex = ((System.currentTimeMillis() / 10000) % funWords.size).toInt()
-        val title = if (isErasing) "Erasing media..." else funWords[wordIndex]
-        val chipText = if (isErasing) "Erasing" else shortChipTexts[wordIndex]
-        val text = String.format(Locale.US, "%.1f%% complete", progress * 100)
+        val title = if (isErasing) context.getString(R.string.notif_erasing_title) else funWords[wordIndex]
+        val chipText = if (isErasing) context.getString(R.string.notif_erasing_chip) else shortChipTexts[wordIndex]
+        val text = String.format(Locale.US, context.getString(R.string.notif_percent_complete), progress * 100)
 
         val notification = buildProgressNotification(progress, title, text, chipText)
         KeepAliveService.currentNotification = notification

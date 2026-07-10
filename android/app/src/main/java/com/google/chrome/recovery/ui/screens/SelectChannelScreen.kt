@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.google.chrome.recovery.R
 import com.google.chrome.recovery.data.RecoveryImage
 import com.google.chrome.recovery.data.RecoveryRepository
 
@@ -38,19 +40,19 @@ fun SelectChannelScreen(modelName: String, onNext: (String) -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        Text("Select a channel", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.select_channel_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(8.dp))
-        Text("Choose the recovery channel for $modelName.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.select_channel_body, modelName), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(32.dp))
 
         if (isLoading) {
             CircularProgressIndicator()
         } else {
             if (availableImages.isEmpty()) {
-                Text("No channels found for this model.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.select_channel_none), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
             } else {
                 availableImages.forEach { image ->
-                    val channelLabel = image.channel ?: "STABLE"
+                    val channelLabel = image.channel ?: stringResource(R.string.select_channel_default_label)
                     ElevatedButton(
                         onClick = { image.url?.let { onNext(it) } },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)

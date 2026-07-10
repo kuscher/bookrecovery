@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -26,6 +27,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.chrome.recovery.R
 
 /**
  * FlashScreen renders the progress and outcome of the flash flow.
@@ -116,14 +118,14 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
             if (!uiState.hasError) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Success",
+                    contentDescription = stringResource(R.string.flash_success_icon),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(64.dp).padding(bottom = 16.dp)
                 )
             } else {
                 Icon(
                     imageVector = Icons.Filled.Warning,
-                    contentDescription = "Error",
+                    contentDescription = stringResource(R.string.flash_error_icon),
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(64.dp).padding(bottom = 16.dp)
                 )
@@ -143,13 +145,13 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
                 modifier = Modifier.fillMaxWidth().height(8.dp)
             )
             Text(
-                text = "${(uiState.progress * 100).toInt()}%",
+                text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
             Spacer(modifier = Modifier.height(24.dp))
             OutlinedButton(onClick = { viewModel.cancelFlashAndReset() }) {
-                Text("Cancel and reset USB Stick")
+                Text(stringResource(R.string.flash_cancel_and_reset))
             }
         } else if (uiState.isErasing && !uiState.isFinished) {
             LinearProgressIndicator(
@@ -157,13 +159,13 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
                 modifier = Modifier.fillMaxWidth().height(8.dp)
             )
             Text(
-                text = "${(uiState.progress * 100).toInt()}%",
+                text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
         } else {
             Button(onClick = onFinish) {
-                Text("Back to Home")
+                Text(stringResource(R.string.action_back_to_home))
             }
         }
     }

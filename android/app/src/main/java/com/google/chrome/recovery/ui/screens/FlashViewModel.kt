@@ -6,6 +6,7 @@ import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.chrome.recovery.R
 import com.google.chrome.recovery.usb.FlashNotificationController
 import com.google.chrome.recovery.usb.UsbFlasher
 import kotlinx.coroutines.delay
@@ -25,7 +26,7 @@ import kotlinx.coroutines.launch
  * @param hasError True if the terminal state was an error.
  */
 data class FlashUiState(
-    val stepText: String = "Starting...",
+    val stepText: String = "",
     val progress: Float = 0f,
     val isErasing: Boolean = false,
     val isFinished: Boolean = false,
@@ -64,7 +65,9 @@ class FlashViewModel(
     private val flasher = UsbFlasher(usbManager, application)
     private val notifications = FlashNotificationController(application)
 
-    private val _uiState = MutableStateFlow(FlashUiState(isErasing = eraseFirst))
+    private val _uiState = MutableStateFlow(
+        FlashUiState(stepText = application.getString(R.string.flash_step_starting), isErasing = eraseFirst)
+    )
     val uiState: StateFlow<FlashUiState> = _uiState.asStateFlow()
 
     private var started = false
@@ -105,7 +108,7 @@ class FlashViewModel(
     fun cancelFlashAndReset() {
         flasher.cancel()
         isCancelledReset = true
-        _uiState.update { it.copy(stepText = "Erasing media...", progress = 0f, isErasing = true) }
+        _uiState.update { it.copy(stepText = string(R.string.flash_step_erasing), progress = 0f, isErasing = true) }
         simulateErase()
     }
 
@@ -132,7 +135,7 @@ class FlashViewModel(
      */
     private fun simulateErase() {
         viewModelScope.launch {
-            _uiState.update { it.copy(stepText = "Erasing media...", isErasing = true) }
+            _uiState.update { it.copy(stepText = string(R.string.flash_step_erasing), isErasing = true) }
             for (i in 1..100) {
                 val p = i / 100f
                 _uiState.update { it.copy(progress = p) }
@@ -141,7 +144,7 @@ class FlashViewModel(
             }
             if (isCancelledReset) {
                 _uiState.update {
-                    it.copy(stepText = "Success! Your USB has been reset.", progress = 1f, isFinished = true, hasError = false)
+                    it.copy(stepText = string(R.string.flash_reset_success), progress = 1f, isFinished = true, hasError = false)
                 }
             } else {
                 _uiState.update { it.copy(isErasing = false) }
@@ -149,6 +152,9 @@ class FlashViewModel(
             }
         }
     }
+
+    private fun string(resId: Int, vararg args: Any): String =
+        getApplication<Application>().getString(resId, *args)
 
     private fun flash() {
         viewModelScope.launch {
@@ -168,18 +174,18 @@ class FlashViewModel(
                     notifications.stopKeepAlive()
                 }
                 errorMsg == null -> {
-                    val message = "Success! Your recovery media is ready."
+                    val message = string(R.string.flash_success)
                     _uiState.update { it.copy(stepText = message, progress = 1f, isFinished = true) }
                     notifications.stopKeepAlive()
                     if (isBackgrounded) {
-                        notifications.postCompletion("Recovery Media Ready", message, isError = false)
+                        notifications.postCompletion(string(R.string.notif_success_title), message, isError = false)
                     }
                 }
                 else -> {
-                    _uiState.update { it.copy(stepText = "Error: $errorMsg", isFinished = true, hasError = true) }
+                    _uiState.update { it.copy(stepText = string(R.string.flash_error, errorMsg), isFinished = true, hasError = true) }
                     notifications.stopKeepAlive()
                     if (isBackgrounded) {
-                        notifications.postCompletion("Error creating media", errorMsg, isError = true)
+                        notifications.postCompletion(string(R.string.notif_error_title), errorMsg, isError = true)
                     }
                 }
             }

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Book Recovery</string>
+
+    <!-- Flasher step announcements -->
     <string name="step_opening_local">Opening local image…</string>
     <string name="step_connecting_server">Connecting to download server…</string>
     <string name="step_unpacking_local">Unpacking local image…</string>
@@ -10,6 +12,7 @@
     <string name="step_writing_usb">Writing to USB…</string>
     <string name="step_verifying">Verifying…</string>
 
+    <!-- Flasher errors -->
     <string name="error_open_local">Could not open the selected local file. It may have been moved or deleted.</string>
     <string name="error_http_server">Download server returned an error: HTTP %d</string>
     <string name="error_invalid_zip">The selected ZIP file does not contain a valid Chrome OS recovery image (.bin).</string>
@@ -21,10 +24,108 @@
     <string name="error_verification_failed">Verification failed. The data written to the USB drive could not be read back correctly.</string>
     <string name="error_unexpected">An unexpected error occurred: %s</string>
 
-    <!-- UI Strings -->
+    <!-- Top bar -->
     <string name="title_step_of">Step %1$d of %2$d</string>
     <string name="action_home">Home</string>
     <string name="action_back">Back</string>
     <string name="action_more">More options</string>
     <string name="action_erase_media">Erase recovery media</string>
+
+    <!-- Shared actions -->
+    <string name="action_continue">Continue</string>
+    <string name="action_ok">OK</string>
+    <string name="action_back_to_home">Back to Home</string>
+
+    <!-- Welcome screen -->
+    <string name="welcome_title">Create recovery media for your Book</string>
+    <string name="welcome_body">You will need an 8 GB or larger USB flash drive or SD card that you don\'t mind erasing.</string>
+    <string name="welcome_get_started">Get started</string>
+
+    <!-- Identify screen -->
+    <string name="identify_title">Identify your Book</string>
+    <string name="identify_body">Enter the model number of the Book you want to recover.</string>
+    <string name="identify_type_model">Type model number</string>
+    <string name="identify_model_not_found">Model not found. Please check and try again.</string>
+    <string name="identify_valid_model">Valid Model</string>
+    <string name="identify_how_to_find">How to find this?</string>
+    <string name="identify_how_to_title">How to find your model number</string>
+    <string name="identify_how_to_body">The model number is located at the bottom of the recovery screen on your Book.</string>
+    <string name="identify_how_to_example">Example: \nPEPPY C6A-V7C-A5Q</string>
+    <string name="identify_or">OR</string>
+    <string name="identify_select_from_list">Select a model from a list</string>
+    <string name="identify_use_local_image">Use local image</string>
+
+    <!-- Select model screen -->
+    <string name="select_model_body">Select the manufacturer and product.</string>
+    <string name="select_model_manufacturer_label">Select a manufacturer</string>
+    <string name="select_model_product_label">Select a product</string>
+
+    <!-- Select channel screen -->
+    <string name="select_channel_title">Select a channel</string>
+    <string name="select_channel_body">Choose the recovery channel for %1$s.</string>
+    <string name="select_channel_none">No channels found for this model.</string>
+    <string name="select_channel_default_label">STABLE</string>
+
+    <!-- Select drive screen -->
+    <string name="select_drive_title">Insert your USB flash drive or SD card</string>
+    <string name="select_drive_body">Select the media you\'d like to use.</string>
+    <string name="select_drive_empty">Please insert a USB drive.</string>
+    <string name="select_drive_unknown_device">Unknown USB Device</string>
+    <string name="select_drive_manufacturer">Manufacturer: %1$s</string>
+    <string name="select_drive_unknown_manufacturer">Unknown</string>
+    <string name="erase_prompt_title">Erase drive before proceeding?</string>
+    <string name="erase_prompt_body">Do you want to format and erase the drive before proceeding with the recovery image? This can help resolve issues with previously used media.</string>
+    <string name="erase_prompt_confirm">Yes, erase first</string>
+    <string name="erase_prompt_skip">Skip and proceed</string>
+    <string name="permission_required_title">Permission Required</string>
+    <string name="permission_denied_usb">Permission denied for USB device.</string>
+
+    <!-- Erase screen -->
+    <string name="erase_step">Erasing...</string>
+    <string name="erase_success">Success! Your recovery media has been erased.</string>
+    <string name="erase_do_not_remove">Please do not remove your recovery media.</string>
+
+    <!-- Flash screen -->
+    <string name="flash_step_starting">Starting...</string>
+    <string name="flash_step_erasing">Erasing media...</string>
+    <string name="flash_reset_success">Success! Your USB has been reset.</string>
+    <string name="flash_success">Success! Your recovery media is ready.</string>
+    <string name="flash_error">Error: %1$s</string>
+    <string name="flash_cancel_and_reset">Cancel and reset USB Stick</string>
+    <string name="flash_success_icon">Success</string>
+    <string name="flash_error_icon">Error</string>
+    <string name="flash_progress_percent">%1$d%%</string>
+
+    <!-- Flash notifications -->
+    <string name="notif_channel_name">Flash Progress</string>
+    <string name="notif_preparing_title">Preparing to flash</string>
+    <string name="notif_preparing_text">Initializing...</string>
+    <string name="notif_preparing_chip">Started</string>
+    <string name="notif_percent_complete">%1$.1f%% complete</string>
+    <string name="notif_erasing_title">Erasing media...</string>
+    <string name="notif_erasing_chip">Erasing</string>
+    <string name="notif_success_title">Recovery Media Ready</string>
+    <string name="notif_error_title">Error creating media</string>
+
+    <!-- Rotating titles shown on the flash notification. The chips array holds the
+         compact variants that fit the API 36 status-bar Live Update chip; the two
+         arrays are index-aligned and must stay the same length. -->
+    <string-array name="flash_fun_words">
+        <item>Flashing...</item>
+        <item>Fluxabilating...</item>
+        <item>Gone fishing...</item>
+        <item>Crunching bytes...</item>
+        <item>Reticulating splines...</item>
+        <item>Writing magic...</item>
+        <item>Doing the heavy lifting...</item>
+    </string-array>
+    <string-array name="flash_fun_chips">
+        <item>Working</item>
+        <item>Writing</item>
+        <item>Wait...</item>
+        <item>Almost</item>
+        <item>Hold on</item>
+        <item>Steady</item>
+        <item>Busy</item>
+    </string-array>
 </resources>
