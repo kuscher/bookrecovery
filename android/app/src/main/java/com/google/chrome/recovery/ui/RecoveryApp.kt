@@ -48,7 +48,7 @@ fun RecoveryApp() {
     ) { uri ->
         if (uri != null) {
             selectedUrl = uri.toString()
-            navController.navigate("select_drive")
+            navController.navigate(Route.SelectDrive.pattern)
         }
     }
 
@@ -57,15 +57,15 @@ fun RecoveryApp() {
             TopAppBar(
                 title = { 
                     val stepIndex = when (currentRoute) {
-                        "welcome" -> 1
-                        "identify", "select_model" -> 2
-                        "select_drive", "erase_drive" -> 3
-                        "flash", "erase_flash" -> 4
+                        Route.Welcome.pattern -> 1
+                        Route.Identify.pattern, Route.SelectModel.pattern -> 2
+                        Route.SelectDrive.pattern, Route.EraseDrive.pattern -> 3
+                        Route.Flash.pattern, Route.EraseFlash.pattern -> 4
                         else -> 1
                     }
                     Column {
                         Text(stringResource(R.string.app_name))
-                        if (currentRoute != "welcome" && currentRoute != null) {
+                        if (currentRoute != Route.Welcome.pattern && currentRoute != null) {
                             Text(
                                 stringResource(R.string.title_step_of, stepIndex, 4),
                                 style = MaterialTheme.typography.labelMedium,
@@ -81,9 +81,9 @@ fun RecoveryApp() {
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 navigationIcon = {
-                    if (currentRoute != "welcome") {
-                        if (currentRoute == "flash" || currentRoute == "erase_flash") {
-                            IconButton(onClick = { navController.popBackStack("welcome", inclusive = false) }) {
+                    if (currentRoute != Route.Welcome.pattern) {
+                        if (currentRoute == Route.Flash.pattern || currentRoute == Route.EraseFlash.pattern) {
+                            IconButton(onClick = { navController.popBackStack(Route.Welcome.pattern, inclusive = false) }) {
                                 Icon(Icons.Filled.Home, contentDescription = stringResource(R.string.action_home))
                             }
                         } else {
@@ -106,7 +106,7 @@ fun RecoveryApp() {
                             text = { Text(stringResource(R.string.action_erase_media)) },
                             onClick = { 
                                 expanded = false
-                                navController.navigate("erase_drive")
+                                navController.navigate(Route.EraseDrive.pattern)
                             }
                         )
                     }
@@ -116,84 +116,84 @@ fun RecoveryApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "welcome",
+            startDestination = Route.Welcome.pattern,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("welcome") {
-                WelcomeScreen(onNext = { navController.navigate("identify") })
+            composable(Route.Welcome.pattern) {
+                WelcomeScreen(onNext = { navController.navigate(Route.Identify.pattern) })
             }
-            composable("identify") {
+            composable(Route.Identify.pattern) {
                 IdentifyScreen(
                     onNext = { modelName ->
-                        navController.navigate("select_channel/${Uri.encode(modelName)}")
+                        navController.navigate(Route.SelectChannel.forModel(modelName))
                     },
                     onSelectFromList = {
-                        navController.navigate("select_model")
+                        navController.navigate(Route.SelectModel.pattern)
                     },
                     onSelectLocalImage = {
                         filePickerLauncher.launch(arrayOf("*/*"))
                     }
                 )
             }
-            composable("select_model") {
+            composable(Route.SelectModel.pattern) {
                 SelectModelScreen(onNext = { modelName ->
-                    navController.navigate("select_channel/${Uri.encode(modelName)}")
+                    navController.navigate(Route.SelectChannel.forModel(modelName))
                 })
             }
-            composable("select_channel/{modelName}") { backStackEntry ->
-                val modelName = Uri.decode(backStackEntry.arguments?.getString("modelName") ?: "")
+            composable(Route.SelectChannel.pattern) { backStackEntry ->
+                val modelName = Uri.decode(backStackEntry.arguments?.getString(Route.ARG_MODEL_NAME) ?: "")
                 SelectChannelScreen(
                     modelName = modelName,
                     onNext = { modelUrl ->
                         selectedUrl = modelUrl
-                        navController.navigate("select_drive")
+                        navController.navigate(Route.SelectDrive.pattern)
                     }
                 )
             }
-            composable("select_drive") {
+            composable(Route.SelectDrive.pattern) {
                 SelectDriveScreen(
                     isEraseFlow = false,
                     onNext = { device ->
                         selectedDevice = device
                         eraseFirst = false
-                        navController.navigate("flash")
+                        navController.navigate(Route.Flash.pattern)
                     },
                     onEraseFirst = { device ->
                         selectedDevice = device
                         eraseFirst = true
-                        navController.navigate("flash")
+                        navController.navigate(Route.Flash.pattern)
                     }
                 )
             }
-            composable("erase_drive") {
+            composable(Route.EraseDrive.pattern) {
                 SelectDriveScreen(
                     isEraseFlow = true,
                     onNext = { device ->
                         selectedDevice = device
-                        navController.navigate("erase_flash")
+                        navController.navigate(Route.EraseFlash.pattern)
                     }
                 )
             }
-            composable("flash") {
+            composable(Route.Flash.pattern) {
                 if (selectedUrl != null && selectedDevice != null) {
                     FlashScreen(
                         url = selectedUrl!!,
                         device = selectedDevice!!,
                         eraseFirst = eraseFirst,
                         onFinish = {
-                            navController.popBackStack("welcome", inclusive = false)
+                            navController.popBackStack(Route.Welcome.pattern, inclusive = false)
                         }
                     )
                 } else {
                     navController.popBackStack()
                 }
             }
-            composable("erase_flash") {
+            composable(Route.EraseFlash.pattern) {
                 if (selectedDevice != null) {
                     EraseScreen(
                         device = selectedDevice!!,
                         onFinish = {
-                            navController.popBackStack("welcome", inclusive = false)
+                            navController.popBackStack(Route.Welcome.pattern, inclusive = false)
                         }
                     )
                 } else {
