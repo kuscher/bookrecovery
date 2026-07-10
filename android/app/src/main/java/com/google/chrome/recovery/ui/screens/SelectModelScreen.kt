@@ -158,7 +158,6 @@ private fun ModelListPane(
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(filteredModels, key = { it.first }) { (name, manufacturer) ->
                     ListItem(
-                        headlineContent = { Text(name) },
                         supportingContent = { Text(manufacturer) },
                         colors = ListItemDefaults.colors(
                             containerColor = if (name == selectedModel) {
@@ -168,7 +167,9 @@ private fun ModelListPane(
                             }
                         ),
                         modifier = Modifier.clickable { onModelClick(name) }
-                    )
+                    ) {
+                        Text(name)
+                    }
                 }
             }
         }
