@@ -61,6 +61,13 @@ dependencies {
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.9.8")
+
+    // Adaptive layouts (window size classes + list-detail pane scaffold).
+    // material3-adaptive-navigation-suite is deliberately absent: it exists for
+    // apps with top-level destinations (bar/rail/drawer); a linear wizard has none.
+    implementation("androidx.compose.material3.adaptive:adaptive:1.2.0")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout:1.2.0")
+    implementation("androidx.compose.material3.adaptive:adaptive-navigation:1.2.0")
     
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

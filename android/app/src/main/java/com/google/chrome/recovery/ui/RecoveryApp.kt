@@ -140,9 +140,17 @@ fun RecoveryApp() {
                 )
             }
             composable(Route.SelectModel.pattern) {
-                SelectModelScreen(onNext = { modelName ->
-                    navController.navigate(Route.SelectChannel.forModel(modelName))
-                })
+                SelectModelScreen(
+                    onNext = { modelName ->
+                        navController.navigate(Route.SelectChannel.forModel(modelName))
+                    },
+                    onImageSelected = { modelUrl ->
+                        // Expanded widths pick the channel in the detail pane, so the
+                        // separate channel step is skipped entirely.
+                        selectedUrl = modelUrl
+                        navController.navigate(Route.SelectDrive.pattern)
+                    }
+                )
             }
             composable(Route.SelectChannel.pattern) { backStackEntry ->
                 val modelName = Uri.decode(backStackEntry.arguments?.getString(Route.ARG_MODEL_NAME) ?: "")
