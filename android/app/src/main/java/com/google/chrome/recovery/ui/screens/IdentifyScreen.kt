@@ -39,7 +39,7 @@ fun IdentifyScreen(
     onSelectFromList: () -> Unit,
     onSelectLocalImage: () -> Unit
 ) {
-    val repository = remember { RecoveryRepository() }
+    val repository = RecoveryRepository.instance
     var images by remember { mutableStateOf<List<RecoveryImage>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 

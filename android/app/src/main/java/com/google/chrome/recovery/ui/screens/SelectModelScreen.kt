@@ -29,7 +29,7 @@ import com.google.chrome.recovery.data.RecoveryRepository
  */
 @Composable
 fun SelectModelScreen(onNext: (String) -> Unit) {
-    val repository = remember { RecoveryRepository() }
+    val repository = RecoveryRepository.instance
     var images by remember { mutableStateOf<List<RecoveryImage>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
