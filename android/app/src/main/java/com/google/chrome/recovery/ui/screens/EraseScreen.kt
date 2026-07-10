@@ -46,7 +46,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         
         if (!isFinished) {
             LinearProgressIndicator(
-                progress = progress,
+                progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(8.dp)
             )
             Text(

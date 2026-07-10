@@ -8,7 +8,6 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.Build
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -58,7 +57,6 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
                                 pendingAction = null
                             }
                         } else {
-                            Log.d("USB", "permission denied for device $device")
                             permissionError = context.getString(R.string.permission_denied_usb)
                             pendingAction = null
                         }

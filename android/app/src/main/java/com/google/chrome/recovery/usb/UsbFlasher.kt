@@ -61,7 +61,6 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
 
         try {
             var isZip = url.endsWith(".zip", ignoreCase = true)
-            var displayName = ""
             val inputStream: InputStream
             val contentLength: Long
 
@@ -76,7 +75,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                         if (sizeIndex != -1) size = it.getLong(sizeIndex)
                         val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                         if (nameIndex != -1) {
-                            displayName = it.getString(nameIndex) ?: ""
+                            val displayName = it.getString(nameIndex) ?: ""
                             if (displayName.endsWith(".zip", ignoreCase = true)) isZip = true
                         }
                     }
@@ -250,11 +249,10 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                 if (now - lastUpdateMs > 500) { // every 500ms
                     lastUpdateMs = now
                     val progress = (totalRead.toDouble() / estimatedUncompressedSize.toDouble()).toFloat()
-                    Log.d("UsbFlasher", "Progress: $totalRead / $estimatedUncompressedSize ($progress)")
                     onProgress(progress.coerceIn(0f, 1f))
                 }
                 
-                bytesRead = dataStream!!.read(readBuffer)
+                bytesRead = dataStream.read(readBuffer)
             }
 
             // Write any remaining data
