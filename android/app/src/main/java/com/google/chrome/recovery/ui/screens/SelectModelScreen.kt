@@ -112,6 +112,7 @@ private fun ModelListDetail(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ModelListPane(
     images: List<RecoveryImage>,
@@ -152,7 +153,7 @@ private fun ModelListPane(
 
         if (isLoading) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                LoadingIndicator()
             }
         } else {
             LazyColumn(modifier = Modifier.weight(1f)) {
@@ -240,7 +241,7 @@ private fun ModelDetailPane(
  * 2. User selects a specific Model belonging to that manufacturer.
  * 3. Navigates to [SelectChannelScreen] to pick the release channel.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ModelDropdowns(
     images: List<RecoveryImage>,
@@ -281,7 +282,7 @@ private fun ModelDropdowns(
         Spacer(modifier = Modifier.height(24.dp))
 
         if (isLoading) {
-            CircularProgressIndicator()
+            LoadingIndicator()
         } else {
             // Manufacturer Dropdown
             ExposedDropdownMenuBox(

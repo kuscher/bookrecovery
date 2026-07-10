@@ -6,6 +6,7 @@ import android.hardware.usb.UsbDevice
 import android.os.Build
 import android.view.ViewTreeObserver
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -110,6 +111,14 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
         viewModel.onBackgroundedChanged(isBackgrounded)
     }
 
+    // Animated with the spec the wavy indicator is designed around, so discrete
+    // progress callbacks (every ~500ms from the flasher) glide instead of stepping.
+    val animatedProgress by animateFloatAsState(
+        targetValue = uiState.progress,
+        animationSpec = WavyProgressIndicatorDefaults.ProgressAnimationSpec,
+        label = "flashProgress"
+    )
+
     Column(
         modifier = Modifier.wizardContentWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -141,9 +150,11 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
         )
 
         if (!uiState.isFinished && !uiState.isErasing) {
-            LinearProgressIndicator(
-                progress = { uiState.progress },
-                modifier = Modifier.fillMaxWidth().height(8.dp)
+            LinearWavyProgressIndicator(
+                progress = { animatedProgress },
+                // The wave settles flat as the write completes, per the Expressive spec.
+                amplitude = { p -> if (p >= 1f) 0f else 1f },
+                modifier = Modifier.fillMaxWidth()
             )
             Text(
                 text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),
@@ -155,9 +166,10 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
                 Text(stringResource(R.string.flash_cancel_and_reset))
             }
         } else if (uiState.isErasing && !uiState.isFinished) {
-            LinearProgressIndicator(
-                progress = { uiState.progress },
-                modifier = Modifier.fillMaxWidth().height(8.dp)
+            LinearWavyProgressIndicator(
+                progress = { animatedProgress },
+                amplitude = { p -> if (p >= 1f) 0f else 1f },
+                modifier = Modifier.fillMaxWidth()
             )
             Text(
                 text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),

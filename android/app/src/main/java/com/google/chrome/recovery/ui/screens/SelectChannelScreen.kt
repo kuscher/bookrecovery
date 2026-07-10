@@ -25,6 +25,7 @@ import com.google.chrome.recovery.ui.wizardContentWidth
  * 
  * Selecting a channel passes the final ZIP download URL to the next screen.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SelectChannelScreen(modelName: String, onNext: (String) -> Unit) {
     val repository = RecoveryRepository.instance
@@ -47,7 +48,7 @@ fun SelectChannelScreen(modelName: String, onNext: (String) -> Unit) {
         Spacer(modifier = Modifier.height(32.dp))
 
         if (isLoading) {
-            CircularProgressIndicator()
+            LoadingIndicator()
         } else {
             if (availableImages.isEmpty()) {
                 Text(stringResource(R.string.select_channel_none), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)

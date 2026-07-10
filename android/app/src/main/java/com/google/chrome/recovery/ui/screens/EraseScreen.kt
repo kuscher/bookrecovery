@@ -1,6 +1,7 @@
 package com.google.chrome.recovery.ui.screens
 
 import android.hardware.usb.UsbDevice
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +32,12 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         isFinished = true
     }
 
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = WavyProgressIndicatorDefaults.ProgressAnimationSpec,
+        label = "eraseProgress"
+    )
+
     Column(
         modifier = Modifier.wizardContentWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -44,9 +51,10 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         )
         
         if (!isFinished) {
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(8.dp)
+            LinearWavyProgressIndicator(
+                progress = { animatedProgress },
+                amplitude = { p -> if (p >= 1f) 0f else 1f },
+                modifier = Modifier.fillMaxWidth()
             )
             Text(
                 text = stringResource(R.string.flash_progress_percent, (progress * 100).toInt()),
