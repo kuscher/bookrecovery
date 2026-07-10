@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -28,6 +29,11 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.chrome.recovery.R
+import com.google.chrome.recovery.ui.game.DinoGameCanvas
+import com.google.chrome.recovery.ui.game.DinoGameEngine
+import com.google.chrome.recovery.ui.game.DinoHighScore
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import com.google.chrome.recovery.ui.wizardContentWidth
 
 /**
@@ -139,11 +145,33 @@ fun FlashScreen(
         label = "flashProgress"
     )
 
+    // The waiting game. Fully self-contained: one engine, one canvas, and this
+    // block — remove the ui/game package and these lines to remove the feature.
+    var gameVisible by rememberSaveable { mutableStateOf(false) }
+    val gameEngine = remember { DinoGameEngine() }
+    val gameScope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        gameEngine.highScore = DinoHighScore.flow(context).first()
+    }
+
     Column(
         modifier = Modifier.wizardContentWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (!uiState.isFinished && gameVisible) {
+            // The game never obscures progress: it sits above, and the status
+            // text + progress bar below stay exactly where they were.
+            DinoGameCanvas(
+                engine = gameEngine,
+                active = !uiState.isFinished,
+                onCrashed = { _, highScore ->
+                    gameScope.launch { DinoHighScore.save(context, highScore) }
+                },
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+        }
+
         if (uiState.isFinished) {
             if (!uiState.hasError) {
                 MorphingSuccessBadge(
@@ -187,6 +215,12 @@ fun FlashScreen(
             } else {
                 OutlinedButton(onClick = { viewModel.cancelFlashAndReset() }) {
                     Text(stringResource(R.string.flash_cancel_and_reset))
+                }
+            }
+            if (!gameVisible) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = { gameVisible = true }) {
+                    Text(stringResource(R.string.flash_play_game))
                 }
             }
         } else if (uiState.isErasing && !uiState.isFinished) {

@@ -72,6 +72,9 @@ dependencies {
     implementation("androidx.compose.material3.adaptive:adaptive-layout:1.2.0")
     implementation("androidx.compose.material3.adaptive:adaptive-navigation:1.2.0")
     
+    // High-score persistence for the flash-screen game
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
