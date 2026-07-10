@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
  *   (channel already picked in the detail pane); navigates straight to drive selection.
  */
 @Composable
-fun SelectModelScreen(onNext: (String) -> Unit, onImageSelected: (String) -> Unit) {
+fun SelectModelScreen(onNext: (String) -> Unit, onImageSelected: (RecoveryImage) -> Unit) {
     val repository = RecoveryRepository.instance
     var images by remember { mutableStateOf<List<RecoveryImage>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -81,7 +81,7 @@ fun SelectModelScreen(onNext: (String) -> Unit, onImageSelected: (String) -> Uni
 private fun ModelListDetail(
     images: List<RecoveryImage>,
     isLoading: Boolean,
-    onImageSelected: (String) -> Unit
+    onImageSelected: (RecoveryImage) -> Unit
 ) {
     val navigator = rememberListDetailPaneScaffoldNavigator<String>()
     val scope = rememberCoroutineScope()
@@ -183,7 +183,7 @@ private fun ModelListPane(
 private fun ModelDetailPane(
     modelName: String?,
     images: List<RecoveryImage>,
-    onImageSelected: (String) -> Unit
+    onImageSelected: (RecoveryImage) -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
     if (modelName == null) {
@@ -227,9 +227,9 @@ private fun ModelDetailPane(
                 val channelLabel = image.channel ?: stringResource(R.string.select_channel_default_label)
                 ElevatedButton(
                     onClick = {
-                        image.url?.let {
+                        if (image.url != null) {
                             haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                            onImageSelected(it)
+                            onImageSelected(image)
                         }
                     },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)

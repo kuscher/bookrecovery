@@ -36,6 +36,9 @@ import java.util.Locale
  */
 class FlashNotificationController(private val context: Context) {
 
+    /** Which phase the progress notification narrates. */
+    enum class Phase { ERASING, FLASHING, VERIFYING }
+
     companion object {
         private const val TAG = "FlashNotifications"
         private const val CHANNEL_ID = "flash_progress"
@@ -113,10 +116,19 @@ class FlashNotificationController(private val context: Context) {
      * Publishes the current progress: refreshes the notification the Foreground
      * Service is holding and (if the user granted notification permission) posts it.
      */
-    fun postProgress(progress: Float, isErasing: Boolean) {
+    fun postProgress(progress: Float, phase: Phase) {
         val wordIndex = ((System.currentTimeMillis() / 10000) % funWords.size).toInt()
-        val title = if (isErasing) context.getString(R.string.notif_erasing_title) else funWords[wordIndex]
-        val chipText = if (isErasing) context.getString(R.string.notif_erasing_chip) else shortChipTexts[wordIndex]
+        // Erase and verify phases stay factual; the fun words are a flashing-only thing.
+        val title = when (phase) {
+            Phase.ERASING -> context.getString(R.string.notif_erasing_title)
+            Phase.VERIFYING -> context.getString(R.string.notif_verifying_title)
+            Phase.FLASHING -> funWords[wordIndex]
+        }
+        val chipText = when (phase) {
+            Phase.ERASING -> context.getString(R.string.notif_erasing_chip)
+            Phase.VERIFYING -> context.getString(R.string.notif_verifying_chip)
+            Phase.FLASHING -> shortChipTexts[wordIndex]
+        }
         val text = String.format(Locale.US, context.getString(R.string.notif_percent_complete), progress * 100)
 
         val notification = buildProgressNotification(progress, title, text, chipText)
