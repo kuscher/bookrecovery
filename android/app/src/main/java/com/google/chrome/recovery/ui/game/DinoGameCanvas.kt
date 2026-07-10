@@ -4,8 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,12 +27,9 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.imageResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
-import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /**
@@ -83,11 +80,10 @@ fun DinoGameCanvas(
         }
     }
 
-    val gameHeight: Dp = 150.dp
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(gameHeight)
+            .aspectRatio(DinoGameEngine.Config.WIDTH / DinoGameEngine.Config.HEIGHT)
             .pointerInput(engine) {
                 detectTapGestures(
                     onPress = {
@@ -124,7 +120,11 @@ fun DinoGameCanvas(
         @Suppress("UNUSED_EXPRESSION")
         frameTick
 
-        val scale = floor(size.width / DinoGameEngine.Config.WIDTH).toInt().coerceAtLeast(1)
+        // Chrome scales the 600-logical-px game to the viewport width with image
+        // smoothing off; do the same (nearest-neighbor via FilterQuality.None).
+        // Integer-only scaling would leave the game at ~55% width on common
+        // phone densities.
+        val scale = size.width / DinoGameEngine.Config.WIDTH
         val night = engine.nightMode
 
         drawRect(if (night) Color(0xFF202124) else Color.Transparent)
@@ -137,9 +137,12 @@ fun DinoGameCanvas(
                 srcOffset = IntOffset(sprite.x, sprite.y),
                 srcSize = IntSize(sprite.width * widthUnits, sprite.height),
                 dstOffset = IntOffset((x * scale).roundToInt(), (y * scale).roundToInt()),
-                // Sprite source is 2x; logical units are 1x, so dst = units * scale
-                // with the source halved back out (srcW/2 * scale).
-                dstSize = IntSize(sprite.width * widthUnits / 2 * scale, sprite.height / 2 * scale),
+                // Sprite source is 2x; logical units are 1x, so dst = logical
+                // extent (srcPx / 2) times the canvas scale.
+                dstSize = IntSize(
+                    (sprite.width * widthUnits / 2f * scale).roundToInt(),
+                    (sprite.height / 2f * scale).roundToInt()
+                ),
                 filterQuality = FilterQuality.None,
                 colorFilter = filter
             )
@@ -198,7 +201,7 @@ fun DinoGameCanvas(
     }
 }
 
-private fun drawScore(scale: Int, engine: DinoGameEngine, blit: (Sprite, Float, Float, Int) -> Unit) {
+private fun drawScore(scale: Float, engine: DinoGameEngine, blit: (Sprite, Float, Float, Int) -> Unit) {
     val digitW = 11f // DEST_WIDTH (1x) from distance_meter.ts
     val y = 5f
     var x = DinoGameEngine.Config.WIDTH - digitW * 6
