@@ -50,7 +50,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().height(8.dp)
             )
             Text(
-                text = "${(progress * 100).toInt()}%",
+                text = stringResource(R.string.flash_progress_percent, (progress * 100).toInt()),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
