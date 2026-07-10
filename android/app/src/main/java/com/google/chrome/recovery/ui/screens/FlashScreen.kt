@@ -9,9 +9,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -126,25 +123,21 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
     ) {
         if (uiState.isFinished) {
             if (!uiState.hasError) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
+                MorphingSuccessBadge(
                     contentDescription = stringResource(R.string.flash_success_icon),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(64.dp).padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 24.dp)
                 )
             } else {
-                Icon(
-                    imageVector = Icons.Filled.Warning,
+                ErrorBadge(
                     contentDescription = stringResource(R.string.flash_error_icon),
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(64.dp).padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 24.dp)
                 )
             }
         }
 
         Text(
             text = uiState.stepText,
-            style = MaterialTheme.typography.titleLarge,
+            style = if (uiState.isFinished) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 32.dp),
             textAlign = TextAlign.Center
         )

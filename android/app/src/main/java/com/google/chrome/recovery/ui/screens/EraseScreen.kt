@@ -43,9 +43,16 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (isFinished) {
+            MorphingSuccessBadge(
+                contentDescription = null,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+        }
+
         Text(
             text = stringResource(currentStepRes),
-            style = MaterialTheme.typography.titleLarge,
+            style = if (isFinished) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 32.dp),
             textAlign = TextAlign.Center
         )
