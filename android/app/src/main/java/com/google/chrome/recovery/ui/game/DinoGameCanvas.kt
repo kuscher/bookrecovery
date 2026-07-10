@@ -4,14 +4,17 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -20,6 +23,7 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -80,11 +84,20 @@ fun DinoGameCanvas(
         }
     }
 
-    Canvas(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(DinoGameEngine.Config.WIDTH / DinoGameEngine.Config.HEIGHT)
-            .pointerInput(engine) {
+    // BoxWithConstraints reads the real bounded width from the parent (the
+    // wizard content column) so the canvas is sized explicitly, instead of via
+    // aspectRatio — which was overflowing the column and pinning the game to the
+    // right edge. The Box then centers the canvas for equal margins.
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        val canvasWidth = maxWidth
+        Canvas(
+            modifier = Modifier
+                .width(canvasWidth)
+                .height(canvasWidth * (DinoGameEngine.Config.HEIGHT / DinoGameEngine.Config.WIDTH))
+                .pointerInput(engine) {
                 detectTapGestures(
                     onPress = {
                         engine.onJumpPressed()
@@ -127,6 +140,12 @@ fun DinoGameCanvas(
         val scale = size.width / DinoGameEngine.Config.WIDTH
         val night = engine.nightMode
 
+        // Clip drawing to the canvas: the second scrolling ground tile and
+        // obstacles waiting off-screen live at logical x >= the canvas width, and
+        // Compose's Canvas does not clip by default — so without this they paint
+        // past the right edge into the parent, which is what pinned the game to
+        // the screen edge instead of staying within its centered column.
+        clipRect {
         drawRect(if (night) Color(0xFF202124) else Color.Transparent)
 
         val filter = if (night) INVERT_FILTER else null
@@ -197,6 +216,8 @@ fun DinoGameCanvas(
             val textY = ((DinoGameEngine.Config.HEIGHT - 25f) / 3f)
             blit(DinoSprites.GAME_OVER_TEXT, textX, textY)
             blit(DinoSprites.RESTART, (DinoGameEngine.Config.WIDTH - 36f) / 2f, textY + 24f)
+        }
+        }
         }
     }
 }
