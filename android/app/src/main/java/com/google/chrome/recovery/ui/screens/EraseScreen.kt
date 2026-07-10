@@ -12,32 +12,42 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.chrome.recovery.R
 import com.google.chrome.recovery.ui.wizardContentWidth
-import kotlinx.coroutines.delay
 
+/**
+ * Renders the standalone erase flow: a real zeroing of the drive's partition
+ * structures, driven by [EraseViewModel]. The screen is a pure renderer, in
+ * the same shape as [FlashScreen].
+ */
 @Composable
 fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
-    var currentStepRes by remember { mutableStateOf(R.string.erase_step) }
-    var progress by remember { mutableStateOf(0f) }
-    var isFinished by remember { mutableStateOf(false) }
+    val viewModel: EraseViewModel = viewModel {
+        EraseViewModel(
+            application = checkNotNull(this[AndroidViewModelFactory.APPLICATION_KEY]),
+            device = device
+        )
+    }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.start()
+    }
 
     val haptics = LocalHapticFeedback.current
-    LaunchedEffect(Unit) {
-        // Simulate erasing by writing zeroes (we don't actually write since we don't have block perms)
-        for (i in 1..100) {
-            progress = i / 100f
-            delay(30) // takes about 3 seconds
+    LaunchedEffect(uiState.isFinished) {
+        if (uiState.isFinished) {
+            haptics.performHapticFeedback(
+                if (uiState.hasError) HapticFeedbackType.Reject else HapticFeedbackType.Confirm
+            )
         }
-        
-        currentStepRes = R.string.erase_success
-        progress = 1f
-        isFinished = true
-        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
     }
 
     val animatedProgress by animateFloatAsState(
-        targetValue = progress,
+        targetValue = uiState.progress,
         animationSpec = WavyProgressIndicatorDefaults.ProgressAnimationSpec,
         label = "eraseProgress"
     )
@@ -47,28 +57,46 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (isFinished) {
-            MorphingSuccessBadge(
-                contentDescription = null,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
+        if (uiState.isFinished) {
+            if (!uiState.hasError) {
+                MorphingSuccessBadge(
+                    contentDescription = null,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+            } else {
+                ErrorBadge(
+                    contentDescription = stringResource(R.string.flash_error_icon),
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+            }
         }
 
         Text(
-            text = stringResource(currentStepRes),
-            style = if (isFinished) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 32.dp),
+            text = uiState.stepText,
+            style = if (uiState.isFinished) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 16.dp),
             textAlign = TextAlign.Center
         )
-        
-        if (!isFinished) {
+
+        uiState.detailText?.let { detail ->
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+
+        if (!uiState.isFinished) {
+            Spacer(modifier = Modifier.height(16.dp))
             LinearWavyProgressIndicator(
                 progress = { animatedProgress },
                 amplitude = { p -> if (p >= 1f) 0f else 1f },
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = stringResource(R.string.flash_progress_percent, (progress * 100).toInt()),
+                text = stringResource(R.string.flash_progress_percent, (uiState.progress * 100).toInt()),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )

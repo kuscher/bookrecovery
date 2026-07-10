@@ -10,7 +10,6 @@ import com.google.chrome.recovery.R
 import com.google.chrome.recovery.usb.FlashNotificationController
 import com.google.chrome.recovery.usb.FlashNotificationController.Phase
 import com.google.chrome.recovery.usb.UsbFlasher
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -110,21 +109,23 @@ class FlashViewModel(
         notifications.startKeepAlive()
 
         if (eraseFirst) {
-            simulateErase()
+            eraseThenFlash()
         } else {
             flash()
         }
     }
 
     /**
-     * Cancels the in-flight write, then runs the erase simulation so the user
-     * ends on a "USB reset" summary rather than a half-written drive left silently.
+     * Cancels the in-flight write, then really erases the drive's partition
+     * structures so the user ends on an honestly "reset" USB stick rather than
+     * a half-written image behind a fake success message. The erase itself
+     * starts only after the flasher reports Cancelled — the write loop must
+     * release the USB interface before anyone else can claim it.
      */
     fun cancelFlashAndReset() {
         flasher.cancel()
         isCancelledReset = true
         _uiState.update { it.copy(stepText = string(R.string.flash_step_erasing), progress = 0f, isErasing = true, isVerifying = false) }
-        simulateErase()
     }
 
     /** Ends the verification pass early. Skipping is a success, not a failure. */
@@ -176,26 +177,43 @@ class FlashViewModel(
     }
 
     /**
-     * Simulated erase pass (about 3 seconds of ramping progress). Ends either in
-     * the cancel-reset summary or by handing off to the real flash, depending on
-     * whether it was entered via [cancelFlashAndReset] or eraseFirst.
+     * Real erase (zeroing the drive's partition structures) followed by the
+     * flash. Replaces the previous 3-second simulation that wrote nothing.
      */
-    private fun simulateErase() {
+    private fun eraseThenFlash() {
         viewModelScope.launch {
             _uiState.update { it.copy(stepText = string(R.string.flash_step_erasing), isErasing = true) }
-            for (i in 1..100) {
-                val p = i / 100f
+            val result = flasher.eraseDevice(device) { p ->
                 _uiState.update { it.copy(progress = p) }
                 notifications.postProgress(p, Phase.ERASING)
-                delay(30)
             }
-            if (isCancelledReset) {
-                _uiState.update {
+            when (result) {
+                is UsbFlasher.EraseResult.Error -> finishWithError(result.message, canRetry = false)
+                is UsbFlasher.EraseResult.Done -> {
+                    _uiState.update { it.copy(isErasing = false, progress = 0f) }
+                    flash()
+                }
+            }
+        }
+    }
+
+    /**
+     * The reset path after a cancelled write: really zero the partition
+     * structures so nothing tries to mount the half-written image, then land
+     * on the reset summary.
+     */
+    private fun eraseForReset() {
+        viewModelScope.launch {
+            val result = flasher.eraseDevice(device) { p ->
+                _uiState.update { it.copy(progress = p) }
+                notifications.postProgress(p, Phase.ERASING)
+            }
+            notifications.stopKeepAlive()
+            when (result) {
+                is UsbFlasher.EraseResult.Error -> finishWithError(result.message, canRetry = false)
+                is UsbFlasher.EraseResult.Done -> _uiState.update {
                     it.copy(stepText = string(R.string.flash_reset_success), progress = 1f, isFinished = true, hasError = false)
                 }
-            } else {
-                _uiState.update { it.copy(isErasing = false) }
-                flash()
             }
         }
     }
@@ -223,8 +241,15 @@ class FlashViewModel(
 
             when (result) {
                 is UsbFlasher.Result.Cancelled -> {
-                    // cancelFlashAndReset() already owns the UI from here; just drop priority.
-                    notifications.stopKeepAlive()
+                    if (isCancelledReset) {
+                        // The write loop has released the USB interface; now the
+                        // reset-erase can claim it.
+                        isCancelledReset = false
+                        eraseForReset()
+                    } else {
+                        // Cancelled because the screen was left (onCleared).
+                        notifications.stopKeepAlive()
+                    }
                 }
                 is UsbFlasher.Result.Success -> {
                     val message = when (result.verification) {

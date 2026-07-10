@@ -69,6 +69,60 @@ class BotDevice(
         return csw[12] == 0.toByte() // Status == 0 (Passed)
     }
 
+    /**
+     * SCSI READ CAPACITY(10): returns the drive's total sector count and sector
+     * size, or null on failure. Needed to locate structures at the end of the
+     * disk (e.g. the backup GPT) without guessing the drive's size.
+     */
+    fun readCapacity(): Capacity? {
+        val cbw = ByteBuffer.allocate(31).order(ByteOrder.LITTLE_ENDIAN)
+        cbw.putInt(0x43425355) // Signature "USBC"
+        cbw.putInt(++tag)
+        cbw.putInt(8) // DataTransferLength: 8-byte capacity structure
+        cbw.put(0x80.toByte()) // Flags (in from device)
+        cbw.put(0x00.toByte()) // LUN
+        cbw.put(10.toByte()) // Command Length
+        cbw.put(0x25.toByte()) // READ CAPACITY(10) opcode
+        while (cbw.position() < 31) cbw.put(0x00.toByte())
+
+        if (connection.bulkTransfer(endpointOut, cbw.array(), 31, 5000) != 31) return null
+
+        val data = ByteArray(8)
+        var read = 0
+        val scratch = ByteArray(8)
+        while (read < 8) {
+            val res = connection.bulkTransfer(endpointIn, scratch, 8 - read, 5000)
+            if (res <= 0) return null
+            System.arraycopy(scratch, 0, data, read, res)
+            read += res
+        }
+
+        val csw = ByteArray(13)
+        val cswScratch = ByteArray(13)
+        var cswRead = 0
+        while (cswRead < 13) {
+            val res = connection.bulkTransfer(endpointIn, cswScratch, 13 - cswRead, 5000)
+            if (res < 0) return null
+            System.arraycopy(cswScratch, 0, csw, cswRead, res)
+            cswRead += res
+        }
+        if (csw[12] != 0.toByte()) return null
+
+        // Both fields are big-endian; the LBA field is the LAST addressable
+        // sector, so total count is +1. Mask to keep the unsigned range.
+        val lastLba = ((data[0].toLong() and 0xff) shl 24) or
+            ((data[1].toLong() and 0xff) shl 16) or
+            ((data[2].toLong() and 0xff) shl 8) or
+            (data[3].toLong() and 0xff)
+        val blockSize = ((data[4].toInt() and 0xff) shl 24) or
+            ((data[5].toInt() and 0xff) shl 16) or
+            ((data[6].toInt() and 0xff) shl 8) or
+            (data[7].toInt() and 0xff)
+        return Capacity(totalSectors = lastLba + 1, sectorSize = blockSize)
+    }
+
+    data class Capacity(val totalSectors: Long, val sectorSize: Int)
+
     fun readSectors(lba: Int, numSectors: Int): ByteArray? {
         val dataSize = numSectors * 512
         

@@ -46,6 +46,12 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
 
         /** Read-back chunk: 128 sectors = 64 KB, the same buffer discipline as the write path. */
         private const val VERIFY_CHUNK_SECTORS = 128
+
+        /** Erase: zero the first 16 MiB (MBR/GPT + early filesystem metadata). */
+        private const val HEAD_WIPE_BYTES = 16L * 1024 * 1024
+
+        /** Erase: zero the last 1 MiB (backup GPT), when capacity is known. */
+        private const val TAIL_WIPE_BYTES = 1L * 1024 * 1024
     }
 
     /** Terminal outcome of a flash attempt. */
@@ -244,42 +250,14 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
             }
 
             // At this point we have a stream of the decompressed .bin file.
-            usbConnection = usbManager.openDevice(device)
-            if (usbConnection == null) {
-                Log.e(TAG, "Permission denied for USB device.")
-                return@withContext Result.WriteError(context.getString(R.string.error_usb_permission))
+            val claim = claimMassStorage(device)
+            if (claim is Claim.Failed) {
+                return@withContext Result.WriteError(claim.message)
             }
-
-            var endpointIn: UsbEndpoint? = null
-            var endpointOut: UsbEndpoint? = null
-
-            for (i in 0 until device.interfaceCount) {
-                val intf = device.getInterface(i)
-                if (intf.interfaceClass == UsbConstants.USB_CLASS_MASS_STORAGE) {
-                    massStorageInterface = intf
-                    for (j in 0 until intf.endpointCount) {
-                        val ep = intf.getEndpoint(j)
-                        if (ep.direction == UsbConstants.USB_DIR_IN) {
-                            endpointIn = ep
-                        } else if (ep.direction == UsbConstants.USB_DIR_OUT) {
-                            endpointOut = ep
-                        }
-                    }
-                    break
-                }
-            }
-
-            if (massStorageInterface == null || endpointIn == null || endpointOut == null) {
-                Log.e(TAG, "Could not find mass storage interface or endpoints.")
-                return@withContext Result.WriteError(context.getString(R.string.error_not_mass_storage))
-            }
-
-            if (!usbConnection.claimInterface(massStorageInterface, true)) {
-                Log.e(TAG, "Could not claim mass storage interface.")
-                return@withContext Result.WriteError(context.getString(R.string.error_claim_interface))
-            }
-
-            val botDevice = BotDevice(usbConnection, massStorageInterface, endpointIn, endpointOut)
+            val ok = claim as Claim.Ok
+            usbConnection = ok.connection
+            massStorageInterface = ok.usbInterface
+            val botDevice = ok.bot
 
             // Stream the image to the drive, digesting the decompressed bytes as they
             // pass — this digest is the reference the read-back is checked against.
@@ -432,6 +410,153 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                 Log.e(TAG, "Failed to close USB connection", e)
             }
         }
+    }
+
+    /** Terminal outcome of an erase. */
+    sealed interface EraseResult {
+        data object Done : EraseResult
+        data class Error(val message: String) : EraseResult
+    }
+
+    /**
+     * Erases the drive by zeroing its partition structures: the first 16 MiB
+     * (MBR/primary GPT plus early filesystem metadata) and, when the drive's
+     * capacity is readable, the last 1 MiB (backup GPT). Operating systems then
+     * see a blank drive and offer to format it.
+     *
+     * This is a signature wipe, not data destruction — matching what the
+     * desktop Chromebook Recovery Utility's erase does, minus its FAT32
+     * reformat (a possible follow-up). It takes seconds, so unlike the flash
+     * it runs without the KeepAlive foreground service.
+     */
+    suspend fun eraseDevice(
+        device: UsbDevice,
+        onProgress: (Float) -> Unit
+    ): EraseResult = withContext(Dispatchers.IO) {
+        var connection: UsbDeviceConnection? = null
+        var claimedInterface: UsbInterface? = null
+        try {
+            val claim = claimMassStorage(device)
+            if (claim is Claim.Failed) {
+                return@withContext EraseResult.Error(claim.message)
+            }
+            val ok = claim as Claim.Ok
+            connection = ok.connection
+            claimedInterface = ok.usbInterface
+            val bot = ok.bot
+
+            val capacity = bot.readCapacity()
+            if (capacity == null) {
+                Log.w(TAG, "READ CAPACITY failed; wiping the head only.")
+            }
+
+            val headSectors = HEAD_WIPE_BYTES / SECTOR_SIZE
+            val headToWipe = capacity?.let { minOf(headSectors, it.totalSectors) } ?: headSectors
+            val tailSectors =
+                if (capacity != null && capacity.totalSectors > headSectors + TAIL_WIPE_BYTES / SECTOR_SIZE) {
+                    TAIL_WIPE_BYTES / SECTOR_SIZE
+                } else 0L
+            val totalToWipe = headToWipe + tailSectors
+            var wiped = 0L
+            val zeros = ByteArray(VERIFY_CHUNK_SECTORS * SECTOR_SIZE)
+
+            fun wipeRange(startLba: Long, count: Long): Boolean {
+                var lba = startLba
+                val end = startLba + count
+                while (lba < end) {
+                    val sectors = minOf(VERIFY_CHUNK_SECTORS.toLong(), end - lba).toInt()
+                    val buffer = if (sectors == VERIFY_CHUNK_SECTORS) zeros else ByteArray(sectors * SECTOR_SIZE)
+                    if (!bot.writeSectors(lba.toInt(), buffer)) {
+                        Log.e(TAG, "Failed to zero sectors at LBA $lba")
+                        return false
+                    }
+                    lba += sectors
+                    wiped += sectors
+                    onProgress((wiped.toDouble() / totalToWipe).toFloat().coerceIn(0f, 1f))
+                }
+                return true
+            }
+
+            if (!wipeRange(0, headToWipe)) {
+                return@withContext EraseResult.Error(context.getString(R.string.error_erase_failed))
+            }
+            if (tailSectors > 0 && capacity != null) {
+                if (!wipeRange(capacity.totalSectors - tailSectors, tailSectors)) {
+                    return@withContext EraseResult.Error(context.getString(R.string.error_erase_failed))
+                }
+            }
+            onProgress(1f)
+            EraseResult.Done
+        } catch (e: Exception) {
+            Log.e(TAG, "Error erasing USB device", e)
+            EraseResult.Error(context.getString(R.string.error_unexpected, e.message ?: e.javaClass.simpleName))
+        } finally {
+            try {
+                if (claimedInterface != null) {
+                    connection?.releaseInterface(claimedInterface)
+                }
+                connection?.close()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to close USB connection", e)
+            }
+        }
+    }
+
+    private sealed interface Claim {
+        class Ok(
+            val connection: UsbDeviceConnection,
+            val usbInterface: UsbInterface,
+            val bot: BotDevice
+        ) : Claim
+
+        class Failed(val message: String) : Claim
+    }
+
+    /**
+     * Opens [device], finds the mass-storage interface and its bulk endpoints,
+     * and claims it. On failure the connection is closed and a localized,
+     * user-facing message is returned.
+     */
+    private fun claimMassStorage(device: UsbDevice): Claim {
+        val connection = usbManager.openDevice(device)
+        if (connection == null) {
+            Log.e(TAG, "Permission denied for USB device.")
+            return Claim.Failed(context.getString(R.string.error_usb_permission))
+        }
+
+        var massStorageInterface: UsbInterface? = null
+        var endpointIn: UsbEndpoint? = null
+        var endpointOut: UsbEndpoint? = null
+
+        for (i in 0 until device.interfaceCount) {
+            val intf = device.getInterface(i)
+            if (intf.interfaceClass == UsbConstants.USB_CLASS_MASS_STORAGE) {
+                massStorageInterface = intf
+                for (j in 0 until intf.endpointCount) {
+                    val ep = intf.getEndpoint(j)
+                    if (ep.direction == UsbConstants.USB_DIR_IN) {
+                        endpointIn = ep
+                    } else if (ep.direction == UsbConstants.USB_DIR_OUT) {
+                        endpointOut = ep
+                    }
+                }
+                break
+            }
+        }
+
+        if (massStorageInterface == null || endpointIn == null || endpointOut == null) {
+            Log.e(TAG, "Could not find mass storage interface or endpoints.")
+            connection.close()
+            return Claim.Failed(context.getString(R.string.error_not_mass_storage))
+        }
+
+        if (!connection.claimInterface(massStorageInterface, true)) {
+            Log.e(TAG, "Could not claim mass storage interface.")
+            connection.close()
+            return Claim.Failed(context.getString(R.string.error_claim_interface))
+        }
+
+        return Claim.Ok(connection, massStorageInterface, BotDevice(connection, massStorageInterface, endpointIn, endpointOut))
     }
 
     /**
