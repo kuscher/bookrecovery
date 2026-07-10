@@ -1,5 +1,22 @@
 package com.google.chrome.recovery.ui.screens
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import android.view.ViewTreeObserver
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -8,24 +25,31 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
-import android.content.Context
-import android.hardware.usb.UsbDevice
-import android.hardware.usb.UsbManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.google.chrome.recovery.MainActivity
+import com.google.chrome.recovery.usb.KeepAliveService
 import com.google.chrome.recovery.usb.UsbFlasher
+import java.util.Locale
+import kotlinx.coroutines.delay
 
 /**
  * FlashScreen handles the core execution logic of the Book Recovery utility.
- * 
+ *
  * This screen is responsible for:
  * 1. Tracking and displaying the status of writing the image to the USB device.
  * 2. Simulating a device erasure if [eraseFirst] is selected.
- * 3. Safely spinning up the [KeepAliveService] (Foreground Service) the moment the screen 
+ * 3. Safely spinning up the [KeepAliveService] (Foreground Service) the moment the screen
  *    is composed. This elevates the app to a foreground priority, ensuring the OS doesn't
  *    kill the background write process if the user navigates to their home screen.
- * 4. Generating and updating an Android 16 (API 36) Live Update status bar chip using 
+ * 4. Generating and updating an Android 16 (API 36) Live Update status bar chip using
  *    `Notification.ProgressStyle()` to keep the user informed natively.
  *
  * @param url The local or remote URL pointing to the recovery image .zip file.
@@ -39,7 +63,7 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
     var progress by remember { mutableStateOf(0f) }
     var isFinished by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
-    
+
     var isErasing by remember { mutableStateOf(eraseFirst) }
     var isCancelledErase by remember { mutableStateOf(false) }
     var isFlashing by remember { mutableStateOf(!eraseFirst) }
@@ -49,12 +73,12 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
     val flasher = remember { UsbFlasher(usbManager, context) }
 
     var isLifecycleBackgrounded by remember { mutableStateOf(false) }
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    val view = androidx.compose.ui.platform.LocalView.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val view = LocalView.current
     var isWindowFocused by remember { mutableStateOf(view.hasWindowFocus()) }
 
     DisposableEffect(view) {
-        val listener = android.view.ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
+        val listener = ViewTreeObserver.OnWindowFocusChangeListener { hasFocus ->
             isWindowFocused = hasFocus
         }
         view.viewTreeObserver.addOnWindowFocusChangeListener(listener)
@@ -64,17 +88,17 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
     }
 
     val isBackgrounded = isLifecycleBackgrounded || !isWindowFocused
-    val isBackgroundedState = androidx.compose.runtime.rememberUpdatedState(isBackgrounded)
+    val isBackgroundedState = rememberUpdatedState(isBackgrounded)
 
-    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
     ) {}
 
     DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE || event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
                 isLifecycleBackgrounded = true
-            } else if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME || event == androidx.lifecycle.Lifecycle.Event.ON_START) {
+            } else if (event == Lifecycle.Event.ON_RESUME || event == Lifecycle.Event.ON_START) {
                 isLifecycleBackgrounded = false
             }
         }
@@ -84,58 +108,58 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
         }
     }
 
-    val notificationManager = remember { context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager }
+    val notificationManager = remember { context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
 
     val pendingIntent = remember(context) {
-        val intent = android.content.Intent(context, com.google.chrome.recovery.MainActivity::class.java).apply {
-            flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        android.app.PendingIntent.getActivity(
-            context, 0, intent, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        PendingIntent.getActivity(
+            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 
-    val buildNotification: (Float, String, String, String) -> android.app.Notification = remember(context, pendingIntent) {
+    val buildNotification: (Float, String, String, String) -> Notification = remember(context, pendingIntent) {
         { p, title, text, chipText ->
-            if (android.os.Build.VERSION.SDK_INT >= 36) {
-                val nativeBuilder = android.app.Notification.Builder(context, "flash_progress")
+            if (Build.VERSION.SDK_INT >= 36) {
+                val nativeBuilder = Notification.Builder(context, "flash_progress")
                     .setSmallIcon(android.R.drawable.stat_sys_download)
                     .setContentTitle(title)
                     .setContentText(text)
-                    .setColor(android.graphics.Color.parseColor("#4285F4"))
+                    .setColor(Color.parseColor("#4285F4"))
                     .setOngoing(true)
                     .setOnlyAlertOnce(true)
-                    .setCategory(android.app.Notification.CATEGORY_PROGRESS)
+                    .setCategory(Notification.CATEGORY_PROGRESS)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
                     .setProgress(100, (p * 100).toInt(), false)
 
                 try {
                     nativeBuilder.setShortCriticalText(chipText)
-                    val progressStyle = android.app.Notification.ProgressStyle()
+                    val progressStyle = Notification.ProgressStyle()
                     progressStyle.setProgress((p * 100).toInt())
                     nativeBuilder.setStyle(progressStyle)
-                    
-                    val extras = android.os.Bundle()
+
+                    val extras = Bundle()
                     extras.putBoolean("android.requestPromotedOngoing", true)
                     nativeBuilder.addExtras(extras)
                 } catch (e: Exception) {
-                    android.util.Log.e("FlashScreen", "Error setting Live Update styles", e)
+                    Log.e("FlashScreen", "Error setting Live Update styles", e)
                 }
-                
+
                 val built = nativeBuilder.build()
                 built.flags = built.flags or 262144
                 built
             } else {
-                androidx.core.app.NotificationCompat.Builder(context, "flash_progress")
+                NotificationCompat.Builder(context, "flash_progress")
                     .setSmallIcon(android.R.drawable.stat_sys_download)
                     .setContentTitle(title)
                     .setContentText(text)
-                    .setColor(android.graphics.Color.parseColor("#4285F4"))
+                    .setColor(Color.parseColor("#4285F4"))
                     .setProgress(1000, (p * 1000).toInt(), false)
                     .setOngoing(true)
                     .setOnlyAlertOnce(true)
-                    .setCategory(androidx.core.app.NotificationCompat.CATEGORY_PROGRESS)
+                    .setCategory(NotificationCompat.CATEGORY_PROGRESS)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
                     .build()
@@ -147,17 +171,17 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
     val shortChipTexts = remember { listOf("Working", "Writing", "Wait...", "Almost", "Hold on", "Steady", "Busy") }
 
     LaunchedEffect(Unit) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            val channel = android.app.NotificationChannel(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
                 "flash_progress",
                 "Flash Progress",
-                android.app.NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_DEFAULT
             )
             notificationManager.createNotificationChannel(channel)
         }
@@ -165,17 +189,17 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
         // Start Foreground Service gracefully once at the beginning to claim foreground priority
         // This prevents ForegroundServiceStartNotAllowedException if the user minimizes during eraseFirst
         val initialNotif = buildNotification(0f, "Preparing to flash", "Initializing...", "Started")
-        com.google.chrome.recovery.usb.KeepAliveService.currentNotification = initialNotif
-        
-        val serviceIntent = android.content.Intent(context, com.google.chrome.recovery.usb.KeepAliveService::class.java)
+        KeepAliveService.currentNotification = initialNotif
+
+        val serviceIntent = Intent(context, KeepAliveService::class.java)
         try {
-            if (android.os.Build.VERSION.SDK_INT >= 26) {
+            if (Build.VERSION.SDK_INT >= 26) {
                 context.startForegroundService(serviceIntent)
             } else {
                 context.startService(serviceIntent)
             }
         } catch (e: Exception) {
-            android.util.Log.e("FlashScreen", "Could not start KeepAliveService", e)
+            Log.e("FlashScreen", "Could not start KeepAliveService", e)
         }
     }
 
@@ -188,10 +212,10 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
             val wordIndex = ((System.currentTimeMillis() / 10000) % funWords.size).toInt()
             val currentFunWord = if (isErasing) "Erasing media..." else funWords[wordIndex]
             val chipText = if (isErasing) "Erasing" else shortChipTexts[wordIndex]
-            
-            val notif = buildNotification(p, currentFunWord, String.format(java.util.Locale.US, "%.1f%% complete", p * 100), chipText)
-            
-            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+
+            val notif = buildNotification(p, currentFunWord, String.format(Locale.US, "%.1f%% complete", p * 100), chipText)
+
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                 notificationManager.notify(1001, notif)
             }
         }
@@ -202,9 +226,9 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
             currentStep = "Erasing media..."
             for (i in 1..100) {
                 progress = i / 100f
-                val notif = buildNotification(progress, "Erasing media...", String.format(java.util.Locale.US, "%.1f%% complete", progress * 100), "Erasing")
-                com.google.chrome.recovery.usb.KeepAliveService.currentNotification = notif
-                if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                val notif = buildNotification(progress, "Erasing media...", String.format(Locale.US, "%.1f%% complete", progress * 100), "Erasing")
+                KeepAliveService.currentNotification = notif
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                     notificationManager.notify(1001, notif)
                 }
                 delay(30)
@@ -228,39 +252,39 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
             device = device,
             url = url,
             onStep = { step -> currentStep = step },
-            onProgress = { p -> 
-                progress = p 
+            onProgress = { p ->
+                progress = p
                 val wordIndex = ((System.currentTimeMillis() / 10000) % funWords.size).toInt()
                 val currentFunWord = funWords[wordIndex]
                 val chipText = shortChipTexts[wordIndex]
 
-                val text = String.format(java.util.Locale.US, "%.1f%% complete", p * 100)
+                val text = String.format(Locale.US, "%.1f%% complete", p * 100)
                 val notif = buildNotification(p, currentFunWord, text, chipText)
-                
-                com.google.chrome.recovery.usb.KeepAliveService.currentNotification = notif
 
-                if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                KeepAliveService.currentNotification = notif
+
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                     notificationManager.notify(1001, notif)
                 }
             }
         )
 
         if (errorMsg == "Cancelled") {
-            context.stopService(android.content.Intent(context, com.google.chrome.recovery.usb.KeepAliveService::class.java))
+            context.stopService(Intent(context, KeepAliveService::class.java))
         } else if (errorMsg == null) {
             currentStep = "Success! Your recovery media is ready."
             progress = 1f
             isFinished = true
-            context.stopService(android.content.Intent(context, com.google.chrome.recovery.usb.KeepAliveService::class.java))
+            context.stopService(Intent(context, KeepAliveService::class.java))
             if (isBackgroundedState.value) {
-                val builder = androidx.core.app.NotificationCompat.Builder(context, "flash_progress")
+                val builder = NotificationCompat.Builder(context, "flash_progress")
                     .setSmallIcon(android.R.drawable.stat_sys_download_done)
                     .setContentTitle("Recovery Media Ready")
                     .setContentText("Success! Your recovery media is ready.")
                     .setOngoing(false)
                     .setAutoCancel(true)
                     .setContentIntent(pendingIntent)
-                if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                     notificationManager.notify(1001, builder.build())
                 }
             }
@@ -268,16 +292,16 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
             currentStep = "Error: $errorMsg"
             hasError = true
             isFinished = true
-            context.stopService(android.content.Intent(context, com.google.chrome.recovery.usb.KeepAliveService::class.java))
+            context.stopService(Intent(context, KeepAliveService::class.java))
             if (isBackgroundedState.value) {
-                val builder = androidx.core.app.NotificationCompat.Builder(context, "flash_progress")
+                val builder = NotificationCompat.Builder(context, "flash_progress")
                     .setSmallIcon(android.R.drawable.stat_notify_error)
                     .setContentTitle("Error creating media")
                     .setContentText(errorMsg)
                     .setOngoing(false)
                     .setAutoCancel(true)
                     .setContentIntent(pendingIntent)
-                if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                     notificationManager.notify(1001, builder.build())
                 }
             }
@@ -291,29 +315,29 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
     ) {
         if (isFinished) {
             if (!hasError) {
-                androidx.compose.material3.Icon(
+                Icon(
                     imageVector = Icons.Filled.CheckCircle,
                     contentDescription = "Success",
-                    tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                    modifier = androidx.compose.ui.Modifier.size(64.dp).padding(bottom = 16.dp)
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp).padding(bottom = 16.dp)
                 )
             } else {
-                androidx.compose.material3.Icon(
+                Icon(
                     imageVector = Icons.Filled.Warning,
                     contentDescription = "Error",
-                    tint = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                    modifier = androidx.compose.ui.Modifier.size(64.dp).padding(bottom = 16.dp)
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(64.dp).padding(bottom = 16.dp)
                 )
             }
         }
 
-        androidx.compose.material3.Text(
+        Text(
             text = currentStep,
-            style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-            modifier = androidx.compose.ui.Modifier.padding(bottom = 32.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 32.dp),
+            textAlign = TextAlign.Center
         )
-        
+
         if (!isFinished && !isErasing) {
             LinearProgressIndicator(
                 progress = { progress },
@@ -325,7 +349,7 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
                 modifier = Modifier.padding(top = 8.dp)
             )
             Spacer(modifier = Modifier.height(24.dp))
-            OutlinedButton(onClick = { 
+            OutlinedButton(onClick = {
                 flasher.cancel()
                 currentStep = "Erasing media..."
                 progress = 0f

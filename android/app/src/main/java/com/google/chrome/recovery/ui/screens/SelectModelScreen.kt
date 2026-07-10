@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import com.google.chrome.recovery.data.RecoveryImage
 import com.google.chrome.recovery.data.RecoveryRepository
 
@@ -98,7 +99,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                     DropdownMenu(
                         expanded = mfrExpanded,
                         onDismissRequest = { mfrExpanded = false },
-                        properties = androidx.compose.ui.window.PopupProperties(focusable = false),
+                        properties = PopupProperties(focusable = false),
                         modifier = Modifier.exposedDropdownSize()
                     ) {
                         filteredManufacturers.forEach { mfr ->
@@ -143,7 +144,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                     DropdownMenu(
                         expanded = modelExpanded,
                         onDismissRequest = { modelExpanded = false },
-                        properties = androidx.compose.ui.window.PopupProperties(focusable = false),
+                        properties = PopupProperties(focusable = false),
                         modifier = Modifier.exposedDropdownSize()
                     ) {
                         filteredModelNames.forEach { modelName ->

@@ -1,8 +1,14 @@
 package com.google.chrome.recovery.ui.screens
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
+import android.os.Build
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 
 @Composable
 fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit, onEraseFirst: ((UsbDevice) -> Unit)? = null) {
@@ -33,11 +40,11 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
     var permissionError by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(context) {
-        val receiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: android.content.Intent) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
                 if (ACTION_USB_PERMISSION == intent.action) {
                     synchronized(this) {
-                        val device: UsbDevice? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
                         } else {
                             @Suppress("DEPRECATION")
@@ -49,7 +56,7 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
                                 pendingAction = null
                             }
                         } else {
-                            android.util.Log.d("USB", "permission denied for device $device")
+                            Log.d("USB", "permission denied for device $device")
                             permissionError = "Permission denied for USB device."
                             pendingAction = null
                         }
@@ -57,12 +64,12 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
                 }
             }
         }
-        val filter = android.content.IntentFilter(ACTION_USB_PERMISSION)
-        androidx.core.content.ContextCompat.registerReceiver(
-            context, 
-            receiver, 
-            filter, 
-            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        val filter = IntentFilter(ACTION_USB_PERMISSION)
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
         )
         onDispose {
             context.unregisterReceiver(receiver)
@@ -75,14 +82,14 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
         } else {
             pendingAction = action
             permissionError = null
-            val permissionIntent = android.app.PendingIntent.getBroadcast(
-                context, 
-                0, 
-                android.content.Intent(ACTION_USB_PERMISSION).apply { setPackage(context.packageName) }, 
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) 
-                    android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT 
-                else 
-                    android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            val permissionIntent = PendingIntent.getBroadcast(
+                context,
+                0,
+                Intent(ACTION_USB_PERMISSION).apply { setPackage(context.packageName) },
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                    PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                else
+                    PendingIntent.FLAG_UPDATE_CURRENT
             )
             usbManager.requestPermission(device, permissionIntent)
         }

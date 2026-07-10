@@ -1,5 +1,9 @@
 package com.google.chrome.recovery.ui
 
+import android.hardware.usb.UsbDevice
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -36,11 +40,11 @@ fun RecoveryApp() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     var selectedUrl by remember { mutableStateOf<String?>(null) }
-    var selectedDevice by remember { mutableStateOf<android.hardware.usb.UsbDevice?>(null) }
+    var selectedDevice by remember { mutableStateOf<UsbDevice?>(null) }
     var eraseFirst by remember { mutableStateOf(false) }
 
-    val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
             selectedUrl = uri.toString()
@@ -121,7 +125,7 @@ fun RecoveryApp() {
             composable("identify") {
                 IdentifyScreen(
                     onNext = { modelName ->
-                        navController.navigate("select_channel/${android.net.Uri.encode(modelName)}")
+                        navController.navigate("select_channel/${Uri.encode(modelName)}")
                     },
                     onSelectFromList = {
                         navController.navigate("select_model")
@@ -133,11 +137,11 @@ fun RecoveryApp() {
             }
             composable("select_model") {
                 SelectModelScreen(onNext = { modelName ->
-                    navController.navigate("select_channel/${android.net.Uri.encode(modelName)}")
+                    navController.navigate("select_channel/${Uri.encode(modelName)}")
                 })
             }
             composable("select_channel/{modelName}") { backStackEntry ->
-                val modelName = android.net.Uri.decode(backStackEntry.arguments?.getString("modelName") ?: "")
+                val modelName = Uri.decode(backStackEntry.arguments?.getString("modelName") ?: "")
                 SelectChannelScreen(
                     modelName = modelName,
                     onNext = { modelUrl ->
