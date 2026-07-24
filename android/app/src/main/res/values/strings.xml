@@ -23,6 +23,7 @@
     <string name="error_drive_too_small">Hardware write error at the end of the drive. The USB drive might not be large enough.</string>
     <string name="error_verification_failed">Verification failed. The data written to the USB drive could not be read back correctly.</string>
     <string name="error_authenticity_failed">The downloaded image did not match Google\'s published checksum. The download may have been corrupted.</string>
+    <string name="error_erase_failed">Could not erase the drive. It may be write-protected, busy, or disconnected.</string>
     <string name="error_unexpected">An unexpected error occurred: %s</string>
 
     <!-- Top bar -->
@@ -77,7 +78,7 @@
     <string name="select_drive_manufacturer">Manufacturer: %1$s</string>
     <string name="select_drive_unknown_manufacturer">Unknown</string>
     <string name="erase_prompt_title">Erase drive before proceeding?</string>
-    <string name="erase_prompt_body">Do you want to format and erase the drive before proceeding with the recovery image? This can help resolve issues with previously used media.</string>
+    <string name="erase_prompt_body">Do you want to erase the drive before writing the recovery image? This clears the drive\'s partition information and can resolve issues with previously used media.</string>
     <string name="erase_prompt_confirm">Yes, erase first</string>
     <string name="erase_prompt_skip">Skip and proceed</string>
     <string name="permission_required_title">Permission Required</string>
@@ -86,6 +87,7 @@
     <!-- Erase screen -->
     <string name="erase_step">Erasing...</string>
     <string name="erase_success">Success! Your recovery media has been erased.</string>
+    <string name="erase_success_detail">The drive\'s partition information was cleared. Your computer may ask to format it before its next use.</string>
     <string name="erase_do_not_remove">Please do not remove your recovery media.</string>
 
     <!-- Flash screen -->
