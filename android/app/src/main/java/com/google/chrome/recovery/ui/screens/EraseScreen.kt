@@ -4,15 +4,19 @@ import android.hardware.usb.UsbDevice
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.google.chrome.recovery.R
 import kotlinx.coroutines.delay
 
 @Composable
 fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
-    var currentStep by remember { mutableStateOf("Erasing...") }
+    val context = LocalContext.current
+    var currentStep by remember { mutableStateOf(context.getString(R.string.erase_step)) }
     var progress by remember { mutableStateOf(0f) }
     var isFinished by remember { mutableStateOf(false) }
 
@@ -23,7 +27,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
             delay(30) // takes about 3 seconds
         }
         
-        currentStep = "Success! Your recovery media has been erased."
+        currentStep = context.getString(R.string.erase_success)
         progress = 1f
         isFinished = true
     }
@@ -42,23 +46,23 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         
         if (!isFinished) {
             LinearProgressIndicator(
-                progress = progress,
+                progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(8.dp)
             )
             Text(
-                text = "${(progress * 100).toInt()}%",
+                text = stringResource(R.string.flash_progress_percent, (progress * 100).toInt()),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Please do not remove your recovery media.",
+                text = stringResource(R.string.erase_do_not_remove),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             Button(onClick = onFinish) {
-                Text("Back to Home")
+                Text(stringResource(R.string.action_back_to_home))
             }
         }
     }

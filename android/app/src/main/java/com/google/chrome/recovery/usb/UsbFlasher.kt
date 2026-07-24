@@ -1,12 +1,19 @@
 package com.google.chrome.recovery.usb
 
 import android.content.Context
+import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbDeviceConnection
+import android.hardware.usb.UsbEndpoint
+import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.google.chrome.recovery.R
+import com.google.chrome.recovery.usb.bot.BotDevice
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
@@ -26,6 +33,14 @@ import java.util.zip.ZipInputStream
  */
 class UsbFlasher(private val usbManager: UsbManager, private val context: Context) {
 
+    companion object {
+        /**
+         * Sentinel returned by [flashImageToUsb] when the write stopped because
+         * [cancel] was called, as opposed to a user-facing error message.
+         */
+        const val RESULT_CANCELLED = "Cancelled"
+    }
+
     @Volatile
     private var isCancelled = false
 
@@ -40,28 +55,27 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
         onProgress: (Float) -> Unit
     ): String? = withContext(Dispatchers.IO) {
         isCancelled = false
-        var usbConnection: android.hardware.usb.UsbDeviceConnection? = null
-        var massStorageInterface: android.hardware.usb.UsbInterface? = null
+        var usbConnection: UsbDeviceConnection? = null
+        var massStorageInterface: UsbInterface? = null
         var dataStream: InputStream? = null
 
         try {
             var isZip = url.endsWith(".zip", ignoreCase = true)
-            var displayName = ""
             val inputStream: InputStream
             val contentLength: Long
 
             if (url.startsWith("content://")) {
                 onStep(context.getString(R.string.step_opening_local))
-                val uri = android.net.Uri.parse(url)
+                val uri = Uri.parse(url)
                 val cursor = context.contentResolver.query(uri, null, null, null, null)
                 var size = 0L
                 cursor?.use {
                     if (it.moveToFirst()) {
-                        val sizeIndex = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                        val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
                         if (sizeIndex != -1) size = it.getLong(sizeIndex)
-                        val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                         if (nameIndex != -1) {
-                            displayName = it.getString(nameIndex) ?: ""
+                            val displayName = it.getString(nameIndex) ?: ""
                             if (displayName.endsWith(".zip", ignoreCase = true)) isZip = true
                         }
                     }
@@ -159,18 +173,18 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                 return@withContext context.getString(R.string.error_usb_permission)
             }
 
-            var endpointIn: android.hardware.usb.UsbEndpoint? = null
-            var endpointOut: android.hardware.usb.UsbEndpoint? = null
+            var endpointIn: UsbEndpoint? = null
+            var endpointOut: UsbEndpoint? = null
 
             for (i in 0 until device.interfaceCount) {
                 val intf = device.getInterface(i)
-                if (intf.interfaceClass == android.hardware.usb.UsbConstants.USB_CLASS_MASS_STORAGE) {
+                if (intf.interfaceClass == UsbConstants.USB_CLASS_MASS_STORAGE) {
                     massStorageInterface = intf
                     for (j in 0 until intf.endpointCount) {
                         val ep = intf.getEndpoint(j)
-                        if (ep.direction == android.hardware.usb.UsbConstants.USB_DIR_IN) {
+                        if (ep.direction == UsbConstants.USB_DIR_IN) {
                             endpointIn = ep
-                        } else if (ep.direction == android.hardware.usb.UsbConstants.USB_DIR_OUT) {
+                        } else if (ep.direction == UsbConstants.USB_DIR_OUT) {
                             endpointOut = ep
                         }
                     }
@@ -188,7 +202,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                 return@withContext context.getString(R.string.error_claim_interface)
             }
 
-            val botDevice = com.google.chrome.recovery.usb.bot.BotDevice(usbConnection, massStorageInterface!!, endpointIn, endpointOut)
+            val botDevice = BotDevice(usbConnection, massStorageInterface, endpointIn, endpointOut)
 
             // Simulate the streaming write process
             onStep(context.getString(R.string.step_writing_usb))
@@ -203,7 +217,7 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
             var bytesRead = dataStream!!.read(readBuffer)
             while (bytesRead != -1) {
                 if (isCancelled) {
-                    return@withContext "Cancelled"
+                    return@withContext RESULT_CANCELLED
                 }
                 
                 // Append read bytes to chunkBuffer
@@ -235,11 +249,10 @@ class UsbFlasher(private val usbManager: UsbManager, private val context: Contex
                 if (now - lastUpdateMs > 500) { // every 500ms
                     lastUpdateMs = now
                     val progress = (totalRead.toDouble() / estimatedUncompressedSize.toDouble()).toFloat()
-                    Log.d("UsbFlasher", "Progress: $totalRead / $estimatedUncompressedSize ($progress)")
                     onProgress(progress.coerceIn(0f, 1f))
                 }
                 
-                bytesRead = dataStream!!.read(readBuffer)
+                bytesRead = dataStream.read(readBuffer)
             }
 
             // Write any remaining data

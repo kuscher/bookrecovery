@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
@@ -54,17 +55,17 @@ fun IdentifyScreen(
     if (showHowToDialog) {
         AlertDialog(
             onDismissRequest = { showHowToDialog = false },
-            title = { Text("How to find your model number") },
+            title = { Text(stringResource(R.string.identify_how_to_title)) },
             text = {
                 Column {
-                    Text("The model number is located at the bottom of the recovery screen on your Book.")
+                    Text(stringResource(R.string.identify_how_to_body))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Example: \nPEPPY C6A-V7C-A5Q", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.identify_how_to_example), fontWeight = FontWeight.Bold)
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showHowToDialog = false }) {
-                    Text("OK")
+                    Text(stringResource(R.string.action_ok))
                 }
             }
         )
@@ -77,10 +78,10 @@ fun IdentifyScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Identify your Book", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.identify_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "Enter the model number of the Book you want to recover.",
+            stringResource(R.string.identify_body),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -89,7 +90,7 @@ fun IdentifyScreen(
 
         Image(
             painter = painterResource(id = R.drawable.insert),
-            contentDescription = "Identify your Book",
+            contentDescription = stringResource(R.string.identify_title),
             modifier = Modifier.height(140.dp),
             contentScale = ContentScale.Fit
         )
@@ -122,16 +123,16 @@ fun IdentifyScreen(
                         typedModel = it 
                         showError = false
                     },
-                    label = { Text("Type model number") },
+                    label = { Text(stringResource(R.string.identify_type_model)) },
                     isError = showError,
-                    supportingText = if (showError) { { Text("Model not found. Please check and try again.") } } else null,
+                    supportingText = if (showError) { { Text(stringResource(R.string.identify_model_not_found)) } } else null,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     trailingIcon = {
                         if (match != null) {
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = "Valid Model",
+                                contentDescription = stringResource(R.string.identify_valid_model),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -141,7 +142,7 @@ fun IdentifyScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 Text(
-                    text = "How to find this?",
+                    text = stringResource(R.string.identify_how_to_find),
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
@@ -162,14 +163,14 @@ fun IdentifyScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isLoading && typedModel.isNotBlank()
                 ) {
-                    Text("Continue")
+                    Text(stringResource(R.string.action_continue))
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
         
-        Text("OR", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.outline)
+        Text(stringResource(R.string.identify_or), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.outline)
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -177,7 +178,7 @@ fun IdentifyScreen(
             onClick = onSelectFromList,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Select a model from a list")
+            Text(stringResource(R.string.identify_select_from_list))
         }
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -186,7 +187,7 @@ fun IdentifyScreen(
             onClick = onSelectLocalImage,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Use local image")
+            Text(stringResource(R.string.identify_use_local_image))
         }
     }
 }

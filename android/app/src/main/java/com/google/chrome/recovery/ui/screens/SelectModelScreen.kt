@@ -7,7 +7,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
+import com.google.chrome.recovery.R
 import com.google.chrome.recovery.data.RecoveryImage
 import com.google.chrome.recovery.data.RecoveryRepository
 
@@ -65,9 +68,9 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
 
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Identify your Book", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.identify_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
-        Text("Select the manufacturer and product.", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.select_model_body), style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.height(24.dp))
 
         if (isLoading) {
@@ -89,7 +92,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                             modelSearchText = ""
                         }
                     },
-                    label = { Text("Select a manufacturer") },
+                    label = { Text(stringResource(R.string.select_model_manufacturer_label)) },
                     readOnly = false,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = mfrExpanded) },
                     modifier = Modifier.menuAnchor().fillMaxWidth()
@@ -98,7 +101,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                     DropdownMenu(
                         expanded = mfrExpanded,
                         onDismissRequest = { mfrExpanded = false },
-                        properties = androidx.compose.ui.window.PopupProperties(focusable = false),
+                        properties = PopupProperties(focusable = false),
                         modifier = Modifier.exposedDropdownSize()
                     ) {
                         filteredManufacturers.forEach { mfr ->
@@ -133,7 +136,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                             selectedModelName = null
                         }
                     },
-                    label = { Text("Select a product") },
+                    label = { Text(stringResource(R.string.select_model_product_label)) },
                     readOnly = false,
                     enabled = selectedManufacturer != null,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) },
@@ -143,7 +146,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                     DropdownMenu(
                         expanded = modelExpanded,
                         onDismissRequest = { modelExpanded = false },
-                        properties = androidx.compose.ui.window.PopupProperties(focusable = false),
+                        properties = PopupProperties(focusable = false),
                         modifier = Modifier.exposedDropdownSize()
                     ) {
                         filteredModelNames.forEach { modelName ->
@@ -167,7 +170,7 @@ fun SelectModelScreen(onNext: (String) -> Unit) {
                     onClick = { selectedModelName?.let { onNext(it) } },
                     enabled = selectedModelName != null
                 ) {
-                    Text("Continue")
+                    Text(stringResource(R.string.action_continue))
                 }
             }
         }

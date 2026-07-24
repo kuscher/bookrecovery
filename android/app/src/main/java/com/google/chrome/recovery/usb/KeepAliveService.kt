@@ -3,6 +3,8 @@ package com.google.chrome.recovery.usb
 import android.app.Notification
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 
 /**
@@ -27,9 +29,9 @@ class KeepAliveService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         currentNotification?.let {
             try {
-                if (android.os.Build.VERSION.SDK_INT >= 34) {
+                if (Build.VERSION.SDK_INT >= 34) {
                     // API 34+ requires specifying foregroundServiceType in startForeground
-                    val type = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                    val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
                     startForeground(1001, it, type)
                 } else {
                     startForeground(1001, it)

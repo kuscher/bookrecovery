@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
@@ -30,20 +31,20 @@ fun WelcomeScreen(onNext: () -> Unit) {
             contentScale = ContentScale.Fit
         )
         Text(
-            text = "Create recovery media for your Book",
+            text = stringResource(R.string.welcome_title),
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 16.dp)
         )
         Text(
-            text = "You will need an 8 GB or larger USB flash drive or SD card that you don't mind erasing.",
+            text = stringResource(R.string.welcome_body),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 32.dp)
         )
         Button(onClick = onNext) {
-            Text("Get started")
+            Text(stringResource(R.string.welcome_get_started))
         }
     }
 }
