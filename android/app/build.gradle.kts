@@ -54,7 +54,10 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
+    // Pinned past the BOM's 1.4.0: every Material 3 Expressive API (wavy progress,
+    // LoadingIndicator, MaterialExpressiveTheme, MaterialShapes) lives on the
+    // 1.5.0-alpha track — Expressive was removed from the 1.4 line at beta01.
+    implementation("androidx.compose.material3:material3:1.5.0-alpha23")
     // material3 stopped depending on material-icons transitively in newer BOMs;
     // the icons artifacts are frozen at 1.7.x and are no longer BOM-managed.
     implementation("androidx.compose.material:material-icons-core:1.7.8")

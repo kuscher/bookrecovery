@@ -14,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.res.painterResource
@@ -44,6 +46,7 @@ fun IdentifyScreen(
     onSelectFromList: () -> Unit,
     onSelectLocalImage: () -> Unit
 ) {
+    val haptics = LocalHapticFeedback.current
     val repository = RecoveryRepository.instance
     var images by remember { mutableStateOf<List<RecoveryImage>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -126,6 +129,7 @@ fun IdentifyScreen(
                 // so a hardware keyboard can drive this step without touching the screen.
                 val submitModel = {
                     if (match?.name != null) {
+                        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                         onNext(match.name)
                     } else {
                         showError = true

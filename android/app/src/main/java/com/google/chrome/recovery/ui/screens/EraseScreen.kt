@@ -1,11 +1,14 @@
 package com.google.chrome.recovery.ui.screens
 
 import android.hardware.usb.UsbDevice
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -19,6 +22,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
     var progress by remember { mutableStateOf(0f) }
     var isFinished by remember { mutableStateOf(false) }
 
+    val haptics = LocalHapticFeedback.current
     LaunchedEffect(Unit) {
         // Simulate erasing by writing zeroes (we don't actually write since we don't have block perms)
         for (i in 1..100) {
@@ -29,24 +33,39 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         currentStepRes = R.string.erase_success
         progress = 1f
         isFinished = true
+        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
     }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = WavyProgressIndicatorDefaults.ProgressAnimationSpec,
+        label = "eraseProgress"
+    )
 
     Column(
         modifier = Modifier.wizardContentWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (isFinished) {
+            MorphingSuccessBadge(
+                contentDescription = null,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+        }
+
         Text(
             text = stringResource(currentStepRes),
-            style = MaterialTheme.typography.titleLarge,
+            style = if (isFinished) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 32.dp),
             textAlign = TextAlign.Center
         )
         
         if (!isFinished) {
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(8.dp)
+            LinearWavyProgressIndicator(
+                progress = { animatedProgress },
+                amplitude = { p -> if (p >= 1f) 0f else 1f },
+                modifier = Modifier.fillMaxWidth()
             )
             Text(
                 text = stringResource(R.string.flash_progress_percent, (progress * 100).toInt()),

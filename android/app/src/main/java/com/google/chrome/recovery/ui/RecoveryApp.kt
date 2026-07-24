@@ -4,6 +4,9 @@ import android.hardware.usb.UsbDevice
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -118,10 +121,29 @@ fun RecoveryApp() {
             )
         }
     ) { innerPadding ->
+        // Wizard steps advance with the theme's expressive motion: forward slides
+        // in on a fast spatial (spring) spec while the outgoing step fades on the
+        // effects spec; popping back mirrors it. Spatial specs animate position,
+        // effects specs animate alpha, per the MotionScheme contract.
+        val motionScheme = MaterialTheme.motionScheme
         NavHost(
             navController = navController,
             startDestination = Route.Welcome.pattern,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    motionScheme.fastSpatialSpec()
+                ) + fadeIn(motionScheme.fastEffectsSpec())
+            },
+            exitTransition = { fadeOut(motionScheme.fastEffectsSpec()) },
+            popEnterTransition = { fadeIn(motionScheme.fastEffectsSpec()) },
+            popExitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.End,
+                    motionScheme.fastSpatialSpec()
+                ) + fadeOut(motionScheme.fastEffectsSpec())
+            }
         ) {
             composable(Route.Welcome.pattern) {
                 WelcomeScreen(onNext = { navController.navigate(Route.Identify.pattern) })

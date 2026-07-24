@@ -3,7 +3,8 @@ package com.google.chrome.recovery.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -35,6 +36,7 @@ private val LightColorScheme = lightColorScheme(
     onSurface = ChromeText
 )
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ChromebookRecoveryTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -59,7 +61,10 @@ fun ChromebookRecoveryTheme(
         }
     }
 
-    MaterialTheme(
+    // MaterialExpressiveTheme keeps our color scheme but adopts the expressive
+    // defaults for everything left null: the springy MotionScheme (read by the
+    // wizard transitions and wavy indicators) and the expressive shape family.
+    MaterialExpressiveTheme(
         colorScheme = colorScheme,
         typography = Typography,
         content = content

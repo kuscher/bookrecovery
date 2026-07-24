@@ -3,11 +3,14 @@ package com.google.chrome.recovery.ui.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -18,6 +21,7 @@ import com.google.chrome.recovery.ui.wizardContentWidth
 
 @Composable
 fun WelcomeScreen(onNext: () -> Unit) {
+    val haptics = LocalHapticFeedback.current
     Column(
         modifier = Modifier
             .wizardContentWidth()
@@ -44,7 +48,14 @@ fun WelcomeScreen(onNext: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 32.dp)
         )
-        Button(onClick = onNext) {
+        Button(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                onNext()
+            },
+            // Expressive button shapes: the corners morph slightly on press.
+            shapes = ButtonDefaults.shapes()
+        ) {
             Text(stringResource(R.string.welcome_get_started))
         }
     }
