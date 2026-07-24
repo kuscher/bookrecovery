@@ -47,6 +47,8 @@ fun RecoveryApp() {
     // fold/unfold, window resize) and system-initiated process death. UsbDevice
     // is Parcelable, so the default saver handles all three.
     var selectedUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedSha1 by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedImageSize by rememberSaveable { mutableStateOf<Long?>(null) }
     var selectedDevice by rememberSaveable { mutableStateOf<UsbDevice?>(null) }
     var eraseFirst by rememberSaveable { mutableStateOf(false) }
 
@@ -55,6 +57,10 @@ fun RecoveryApp() {
     ) { uri ->
         if (uri != null) {
             selectedUrl = uri.toString()
+            // Local files carry no manifest checksum; the flash gets write
+            // verification only.
+            selectedSha1 = null
+            selectedImageSize = null
             navController.navigate(Route.SelectDrive.pattern)
         }
     }
@@ -166,10 +172,12 @@ fun RecoveryApp() {
                     onNext = { modelName ->
                         navController.navigate(Route.SelectChannel.forModel(modelName))
                     },
-                    onImageSelected = { modelUrl ->
+                    onImageSelected = { image ->
                         // Expanded widths pick the channel in the detail pane, so the
                         // separate channel step is skipped entirely.
-                        selectedUrl = modelUrl
+                        selectedUrl = image.url
+                        selectedSha1 = image.sha1
+                        selectedImageSize = image.filesize
                         navController.navigate(Route.SelectDrive.pattern)
                     }
                 )
@@ -178,8 +186,10 @@ fun RecoveryApp() {
                 val modelName = Uri.decode(backStackEntry.arguments?.getString(Route.ARG_MODEL_NAME) ?: "")
                 SelectChannelScreen(
                     modelName = modelName,
-                    onNext = { modelUrl ->
-                        selectedUrl = modelUrl
+                    onNext = { image ->
+                        selectedUrl = image.url
+                        selectedSha1 = image.sha1
+                        selectedImageSize = image.filesize
                         navController.navigate(Route.SelectDrive.pattern)
                     }
                 )
@@ -213,6 +223,8 @@ fun RecoveryApp() {
                     FlashScreen(
                         url = selectedUrl!!,
                         device = selectedDevice!!,
+                        expectedSha1 = selectedSha1,
+                        expectedImageSize = selectedImageSize,
                         eraseFirst = eraseFirst,
                         onFinish = {
                             navController.popBackStack(Route.Welcome.pattern, inclusive = false)

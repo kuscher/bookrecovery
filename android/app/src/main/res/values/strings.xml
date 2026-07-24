@@ -22,6 +22,7 @@
     <string name="error_hardware_write">Hardware write error. The USB drive might be corrupted, full, or write-protected.</string>
     <string name="error_drive_too_small">Hardware write error at the end of the drive. The USB drive might not be large enough.</string>
     <string name="error_verification_failed">Verification failed. The data written to the USB drive could not be read back correctly.</string>
+    <string name="error_authenticity_failed">The downloaded image did not match Google\'s published checksum. The download may have been corrupted.</string>
     <string name="error_unexpected">An unexpected error occurred: %s</string>
 
     <!-- Top bar -->
@@ -92,6 +93,10 @@
     <string name="flash_step_erasing">Erasing media...</string>
     <string name="flash_reset_success">Success! Your USB has been reset.</string>
     <string name="flash_success">Success! Your recovery media is ready.</string>
+    <string name="flash_success_verified">Success! Your recovery media is ready and matches Google\'s published checksum.</string>
+    <string name="flash_success_write_verified">Success! Your recovery media is ready. Write verification passed.</string>
+    <string name="flash_skip_verification">Skip verification</string>
+    <string name="flash_retry">Retry flash</string>
     <string name="flash_error">Error: %1$s</string>
     <string name="flash_cancel_and_reset">Cancel and reset USB Stick</string>
     <string name="flash_success_icon">Success</string>
@@ -106,6 +111,8 @@
     <string name="notif_percent_complete">%1$.1f%% complete</string>
     <string name="notif_erasing_title">Erasing media...</string>
     <string name="notif_erasing_chip">Erasing</string>
+    <string name="notif_verifying_title">Verifying media...</string>
+    <string name="notif_verifying_chip">Verifying</string>
     <string name="notif_success_title">Recovery Media Ready</string>
     <string name="notif_error_title">Error creating media</string>
 

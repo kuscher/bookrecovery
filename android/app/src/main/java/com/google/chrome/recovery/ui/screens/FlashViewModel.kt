@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.chrome.recovery.R
 import com.google.chrome.recovery.usb.FlashNotificationController
+import com.google.chrome.recovery.usb.FlashNotificationController.Phase
 import com.google.chrome.recovery.usb.UsbFlasher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,44 +21,58 @@ import kotlinx.coroutines.launch
  * Snapshot of everything [FlashScreen] needs to render.
  *
  * @param stepText The headline status line (step description, success message, or error).
- * @param progress Overall progress of the current phase, 0f..1f.
+ * @param progress Progress of the current phase (write or verification), 0f..1f.
  * @param isErasing True while the pre-flash (or cancel-triggered) erase pass is running.
+ * @param isVerifying True while the post-write read-back verification is running.
  * @param isFinished True once the flow reached a terminal state (success or error).
  * @param hasError True if the terminal state was an error.
+ * @param canRetry True when the terminal error is a verification failure — the write
+ *   itself worked, so offering a full re-flash is the actionable recovery.
  */
 data class FlashUiState(
     val stepText: String = "",
     val progress: Float = 0f,
     val isErasing: Boolean = false,
+    val isVerifying: Boolean = false,
     val isFinished: Boolean = false,
     val hasError: Boolean = false,
+    val canRetry: Boolean = false,
 )
 
 /**
  * ViewModel owning the flash execution state machine:
  *
- *   (erasing) -> flashing -> success / error
- *                  |
+ *   (erasing) -> flashing -> verifying -> success / error
+ *                  |             |
+ *                  |             +-- skip -> success (unverified; skip != fail)
  *                  +-- cancel -> erasing (reset) -> success
  *
  * It drives [UsbFlasher] on a background dispatcher, holds the UI state across
  * configuration changes, and delegates every notification / Foreground Service
  * concern to [FlashNotificationController]. [FlashScreen] is left as a pure
- * renderer of [FlashUiState]; the only view concerns remaining there are the
- * POST_NOTIFICATIONS permission prompt and window-focus tracking, which need
- * an Activity and a View respectively.
+ * renderer of [FlashUiState].
+ *
+ * Verification is default-on: official images are checked twice (the download
+ * against the manifest checksum, the drive against the written bytes); local
+ * images get write verification only, since there is no authority to check
+ * authenticity against.
  *
  * Scoped to the flash destination's NavBackStackEntry, so the running flash
- * survives rotation/resize and is torn down when the user leaves the screen.
+ * survives rotation/resize — and [onCleared] cancels the flasher, so leaving
+ * the screen no longer orphans a write loop that keeps running blind.
  *
  * @param device The physical USB device the user has authorized writing to.
  * @param url The local or remote URL pointing to the recovery image .zip file.
+ * @param expectedSha1 Manifest SHA-1 of the download, when flashing an official
+ *   image; null for local files.
  * @param eraseFirst If true, a 3-second erase simulation runs before flashing.
  */
 class FlashViewModel(
     application: Application,
     private val device: UsbDevice,
     private val url: String,
+    private val expectedSha1: String?,
+    private val expectedImageSize: Long?,
     private val eraseFirst: Boolean,
 ) : AndroidViewModel(application) {
 
@@ -108,8 +123,25 @@ class FlashViewModel(
     fun cancelFlashAndReset() {
         flasher.cancel()
         isCancelledReset = true
-        _uiState.update { it.copy(stepText = string(R.string.flash_step_erasing), progress = 0f, isErasing = true) }
+        _uiState.update { it.copy(stepText = string(R.string.flash_step_erasing), progress = 0f, isErasing = true, isVerifying = false) }
         simulateErase()
+    }
+
+    /** Ends the verification pass early. Skipping is a success, not a failure. */
+    fun skipVerification() {
+        flasher.skipVerification()
+    }
+
+    /**
+     * Full re-flash after a verification failure: the drive contents can't be
+     * trusted, so the only honest recovery is writing (and verifying) again.
+     */
+    fun retryFlash() {
+        _uiState.update {
+            FlashUiState(stepText = string(R.string.flash_step_starting))
+        }
+        notifications.startKeepAlive()
+        flash()
     }
 
     /**
@@ -124,8 +156,23 @@ class FlashViewModel(
         if (!backgrounded) {
             notifications.dismissProgress()
         } else if (!state.isFinished && !state.hasError) {
-            notifications.postProgress(state.progress, state.isErasing)
+            notifications.postProgress(state.progress, state.toPhase())
         }
+    }
+
+    /**
+     * The screen was popped from the back stack. Stop the flasher cooperatively so
+     * the write loop doesn't keep running against a drive nobody is watching; the
+     * flasher's finally block releases the USB interface.
+     */
+    override fun onCleared() {
+        flasher.cancel()
+    }
+
+    private fun FlashUiState.toPhase(): Phase = when {
+        isErasing -> Phase.ERASING
+        isVerifying -> Phase.VERIFYING
+        else -> Phase.FLASHING
     }
 
     /**
@@ -139,7 +186,7 @@ class FlashViewModel(
             for (i in 1..100) {
                 val p = i / 100f
                 _uiState.update { it.copy(progress = p) }
-                notifications.postProgress(p, isErasing = true)
+                notifications.postProgress(p, Phase.ERASING)
                 delay(30)
             }
             if (isCancelledReset) {
@@ -158,37 +205,60 @@ class FlashViewModel(
 
     private fun flash() {
         viewModelScope.launch {
-            val errorMsg = flasher.flashImageToUsb(
+            val result = flasher.flashImageToUsb(
                 device = device,
                 url = url,
+                expectedZipSha1 = expectedSha1,
+                expectedImageSize = expectedImageSize,
                 onStep = { step -> _uiState.update { it.copy(stepText = step) } },
                 onProgress = { p ->
-                    _uiState.update { it.copy(progress = p) }
-                    notifications.postProgress(p, isErasing = false)
+                    _uiState.update { it.copy(progress = p, isVerifying = false) }
+                    notifications.postProgress(p, Phase.FLASHING)
+                },
+                onVerifyProgress = { p ->
+                    _uiState.update { it.copy(progress = p, isVerifying = true) }
+                    notifications.postProgress(p, Phase.VERIFYING)
                 }
             )
 
-            when {
-                errorMsg == UsbFlasher.RESULT_CANCELLED -> {
+            when (result) {
+                is UsbFlasher.Result.Cancelled -> {
                     // cancelFlashAndReset() already owns the UI from here; just drop priority.
                     notifications.stopKeepAlive()
                 }
-                errorMsg == null -> {
-                    val message = string(R.string.flash_success)
-                    _uiState.update { it.copy(stepText = message, progress = 1f, isFinished = true) }
+                is UsbFlasher.Result.Success -> {
+                    val message = when (result.verification) {
+                        UsbFlasher.Verification.AUTHENTIC -> string(R.string.flash_success_verified)
+                        UsbFlasher.Verification.WRITE_VERIFIED -> string(R.string.flash_success_write_verified)
+                        UsbFlasher.Verification.SKIPPED -> string(R.string.flash_success)
+                    }
+                    _uiState.update {
+                        it.copy(stepText = message, progress = 1f, isVerifying = false, isFinished = true)
+                    }
                     notifications.stopKeepAlive()
                     if (isBackgrounded) {
                         notifications.postCompletion(string(R.string.notif_success_title), message, isError = false)
                     }
                 }
-                else -> {
-                    _uiState.update { it.copy(stepText = string(R.string.flash_error, errorMsg), isFinished = true, hasError = true) }
-                    notifications.stopKeepAlive()
-                    if (isBackgrounded) {
-                        notifications.postCompletion(string(R.string.notif_error_title), errorMsg, isError = true)
-                    }
-                }
+                is UsbFlasher.Result.WriteError -> finishWithError(result.message, canRetry = false)
+                is UsbFlasher.Result.VerificationError -> finishWithError(result.message, canRetry = true)
             }
+        }
+    }
+
+    private fun finishWithError(message: String, canRetry: Boolean) {
+        _uiState.update {
+            it.copy(
+                stepText = string(R.string.flash_error, message),
+                isVerifying = false,
+                isFinished = true,
+                hasError = true,
+                canRetry = canRetry
+            )
+        }
+        notifications.stopKeepAlive()
+        if (isBackgrounded) {
+            notifications.postCompletion(string(R.string.notif_error_title), message, isError = true)
         }
     }
 }

@@ -54,17 +54,19 @@ class BotDevice(
             offset += toWrite
         }
 
-        // Read CSW
+        // Read CSW. bulkTransfer always writes at the buffer's start, so partial
+        // reads must accumulate through a scratch buffer — reading into csw
+        // directly a second time would overwrite the bytes already collected.
         val csw = ByteArray(13)
+        val scratch = ByteArray(13)
         var cswRead = 0
         while (cswRead < 13) {
-            val res = connection.bulkTransfer(endpointIn, csw, 13 - cswRead, 10000) // 10s timeout for flash writes
+            val res = connection.bulkTransfer(endpointIn, scratch, 13 - cswRead, 10000) // 10s timeout for flash writes
             if (res < 0) return false
-            // Shift data if it was a short read, though CSW is usually one packet
-            if (cswRead > 0) System.arraycopy(csw, 0, csw, cswRead, res)
+            System.arraycopy(scratch, 0, csw, cswRead, res)
             cswRead += res
         }
-        return cswRead == 13 && csw[12] == 0.toByte() // Status == 0 (Passed)
+        return csw[12] == 0.toByte() // Status == 0 (Passed)
     }
 
     fun readSectors(lba: Int, numSectors: Int): ByteArray? {
@@ -91,6 +93,8 @@ class BotDevice(
 
         if (connection.bulkTransfer(endpointOut, cbw.array(), 31, 5000) != 31) return null
 
+        // Read the data phase in 16KB bulk transfers. Short reads are legal on
+        // bulk IN endpoints (packet boundaries), so accumulate rather than fail.
         val data = ByteArray(dataSize)
         val chunkSize = 16384
         var offset = 0
@@ -98,20 +102,21 @@ class BotDevice(
             val toRead = Math.min(chunkSize, dataSize - offset)
             val chunk = ByteArray(toRead)
             val result = connection.bulkTransfer(endpointIn, chunk, toRead, 5000)
-            if (result != toRead) return null
-            System.arraycopy(chunk, 0, data, offset, toRead)
-            offset += toRead
+            if (result <= 0) return null
+            System.arraycopy(chunk, 0, data, offset, result)
+            offset += result
         }
 
         val csw = ByteArray(13)
+        val scratch = ByteArray(13)
         var cswRead = 0
         while (cswRead < 13) {
-            val res = connection.bulkTransfer(endpointIn, csw, 13 - cswRead, 5000)
+            val res = connection.bulkTransfer(endpointIn, scratch, 13 - cswRead, 5000)
             if (res < 0) return null
-            if (cswRead > 0) System.arraycopy(csw, 0, csw, cswRead, res)
+            System.arraycopy(scratch, 0, csw, cswRead, res)
             cswRead += res
         }
-        if (cswRead != 13 || csw[12] != 0.toByte()) return null
+        if (csw[12] != 0.toByte()) return null
 
         return data
     }

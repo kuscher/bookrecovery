@@ -29,7 +29,7 @@ import com.google.chrome.recovery.ui.wizardContentWidth
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun SelectChannelScreen(modelName: String, onNext: (String) -> Unit) {
+fun SelectChannelScreen(modelName: String, onNext: (RecoveryImage) -> Unit) {
     val haptics = LocalHapticFeedback.current
     val repository = RecoveryRepository.instance
     var images by remember { mutableStateOf<List<RecoveryImage>>(emptyList()) }
@@ -60,9 +60,9 @@ fun SelectChannelScreen(modelName: String, onNext: (String) -> Unit) {
                     val channelLabel = image.channel ?: stringResource(R.string.select_channel_default_label)
                     ElevatedButton(
                         onClick = {
-                            image.url?.let {
+                            if (image.url != null) {
                                 haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                                onNext(it)
+                                onNext(image)
                             }
                         },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)

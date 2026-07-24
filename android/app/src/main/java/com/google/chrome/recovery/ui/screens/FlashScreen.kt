@@ -48,12 +48,21 @@ import com.google.chrome.recovery.ui.wizardContentWidth
  * @param onFinish Callback invoked when the user dismisses the success/error summary.
  */
 @Composable
-fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onFinish: () -> Unit) {
+fun FlashScreen(
+    url: String,
+    device: UsbDevice,
+    expectedSha1: String? = null,
+    expectedImageSize: Long? = null,
+    eraseFirst: Boolean = false,
+    onFinish: () -> Unit
+) {
     val viewModel: FlashViewModel = viewModel {
         FlashViewModel(
             application = checkNotNull(this[AndroidViewModelFactory.APPLICATION_KEY]),
             device = device,
             url = url,
+            expectedSha1 = expectedSha1,
+            expectedImageSize = expectedImageSize,
             eraseFirst = eraseFirst
         )
     }
@@ -169,8 +178,16 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
                 modifier = Modifier.padding(top = 8.dp)
             )
             Spacer(modifier = Modifier.height(24.dp))
-            OutlinedButton(onClick = { viewModel.cancelFlashAndReset() }) {
-                Text(stringResource(R.string.flash_cancel_and_reset))
+            if (uiState.isVerifying) {
+                // Skipping verification is allowed and is not a failure; cancelling
+                // and erasing mid-verification would destroy a completed write.
+                OutlinedButton(onClick = { viewModel.skipVerification() }) {
+                    Text(stringResource(R.string.flash_skip_verification))
+                }
+            } else {
+                OutlinedButton(onClick = { viewModel.cancelFlashAndReset() }) {
+                    Text(stringResource(R.string.flash_cancel_and_reset))
+                }
             }
         } else if (uiState.isErasing && !uiState.isFinished) {
             LinearWavyProgressIndicator(
@@ -184,8 +201,18 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
                 modifier = Modifier.padding(top = 8.dp)
             )
         } else {
-            Button(onClick = onFinish) {
-                Text(stringResource(R.string.action_back_to_home))
+            if (uiState.canRetry) {
+                Button(onClick = { viewModel.retryFlash() }) {
+                    Text(stringResource(R.string.flash_retry))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = onFinish) {
+                    Text(stringResource(R.string.action_back_to_home))
+                }
+            } else {
+                Button(onClick = onFinish) {
+                    Text(stringResource(R.string.action_back_to_home))
+                }
             }
         }
     }
