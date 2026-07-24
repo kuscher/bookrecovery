@@ -4,7 +4,6 @@ import android.hardware.usb.UsbDevice
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -15,8 +14,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
-    val context = LocalContext.current
-    var currentStep by remember { mutableStateOf(context.getString(R.string.erase_step)) }
+    var currentStepRes by remember { mutableStateOf(R.string.erase_step) }
     var progress by remember { mutableStateOf(0f) }
     var isFinished by remember { mutableStateOf(false) }
 
@@ -27,7 +25,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
             delay(30) // takes about 3 seconds
         }
         
-        currentStep = context.getString(R.string.erase_success)
+        currentStepRes = R.string.erase_success
         progress = 1f
         isFinished = true
     }
@@ -38,7 +36,7 @@ fun EraseScreen(device: UsbDevice, onFinish: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = currentStep,
+            text = stringResource(currentStepRes),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 32.dp),
             textAlign = TextAlign.Center
