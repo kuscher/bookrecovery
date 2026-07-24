@@ -14,12 +14,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
+import com.google.chrome.recovery.ui.wizardContentWidth
 
 @Composable
 fun WelcomeScreen(onNext: () -> Unit) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .wizardContentWidth()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

@@ -28,6 +28,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.chrome.recovery.R
+import com.google.chrome.recovery.ui.wizardContentWidth
 
 /**
  * FlashScreen renders the progress and outcome of the flash flow.
@@ -110,7 +111,7 @@ fun FlashScreen(url: String, device: UsbDevice, eraseFirst: Boolean = false, onF
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.wizardContentWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

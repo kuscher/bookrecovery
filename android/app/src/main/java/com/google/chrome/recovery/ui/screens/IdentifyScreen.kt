@@ -4,14 +4,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -19,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.google.chrome.recovery.R
 import com.google.chrome.recovery.data.RecoveryImage
 import com.google.chrome.recovery.data.RecoveryRepository
+import com.google.chrome.recovery.ui.wizardContentWidth
 
 @OptIn(ExperimentalMaterial3Api::class)
 /**
@@ -39,11 +44,11 @@ fun IdentifyScreen(
     onSelectFromList: () -> Unit,
     onSelectLocalImage: () -> Unit
 ) {
-    val repository = remember { RecoveryRepository() }
+    val repository = RecoveryRepository.instance
     var images by remember { mutableStateOf<List<RecoveryImage>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    var typedModel by remember { mutableStateOf("") }
+    var typedModel by rememberSaveable { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
     var showHowToDialog by remember { mutableStateOf(false) }
 
@@ -73,7 +78,7 @@ fun IdentifyScreen(
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .wizardContentWidth()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -117,6 +122,16 @@ fun IdentifyScreen(
                     }
                 } else null
 
+                // Continue is shared by the button and the field's Done/Enter action,
+                // so a hardware keyboard can drive this step without touching the screen.
+                val submitModel = {
+                    if (match?.name != null) {
+                        onNext(match.name)
+                    } else {
+                        showError = true
+                    }
+                }
+
                 OutlinedTextField(
                     value = typedModel,
                     onValueChange = { 
@@ -128,6 +143,8 @@ fun IdentifyScreen(
                     supportingText = if (showError) { { Text(stringResource(R.string.identify_model_not_found)) } } else null,
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { if (typedModel.isNotBlank()) submitModel() }),
                     trailingIcon = {
                         if (match != null) {
                             Icon(
@@ -153,13 +170,7 @@ fun IdentifyScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = {
-                        if (match?.name != null) {
-                            onNext(match.name)
-                        } else {
-                            showError = true
-                        }
-                    },
+                    onClick = submitModel,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isLoading && typedModel.isNotBlank()
                 ) {

@@ -24,15 +24,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.chrome.recovery.R
+import com.google.chrome.recovery.ui.wizardContentWidth
 
 @Composable
 fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit, onEraseFirst: ((UsbDevice) -> Unit)? = null) {
     val context = LocalContext.current
     val usbManager = remember { context.getSystemService(Context.USB_SERVICE) as UsbManager }
     var selectedDevice by remember { mutableStateOf<UsbDevice?>(null) }
-    
-    // In a real app we would listen for attach/detach broadcasts
-    val deviceList = remember { usbManager.deviceList.values.toList() }
+
+    // Keep the device list live: plugging in a drive while this screen is open
+    // (the natural order of operations) should make it appear without leaving
+    // and re-entering. Detach also clears a now-stale selection.
+    var deviceList by remember { mutableStateOf(usbManager.deviceList.values.toList()) }
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                deviceList = usbManager.deviceList.values.toList()
+                if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED &&
+                    selectedDevice != null && selectedDevice !in deviceList
+                ) {
+                    selectedDevice = null
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        }
+        // NOT_EXPORTED still receives system broadcasts; it only blocks other apps.
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
 
     var showErasePrompt by remember { mutableStateOf(false) }
 
@@ -95,7 +119,7 @@ fun SelectDriveScreen(isEraseFlow: Boolean = false, onNext: (UsbDevice) -> Unit,
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.wizardContentWidth().padding(16.dp)) {
         Text(stringResource(R.string.select_drive_title), style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
         Text(stringResource(R.string.select_drive_body), style = MaterialTheme.typography.bodyLarge)

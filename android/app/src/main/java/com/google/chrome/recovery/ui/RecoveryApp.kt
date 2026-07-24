@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.compose.NavHost
@@ -39,9 +40,12 @@ fun RecoveryApp() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    var selectedUrl by remember { mutableStateOf<String?>(null) }
-    var selectedDevice by remember { mutableStateOf<UsbDevice?>(null) }
-    var eraseFirst by remember { mutableStateOf(false) }
+    // Wizard state is saveable so it survives configuration changes (rotation,
+    // fold/unfold, window resize) and system-initiated process death. UsbDevice
+    // is Parcelable, so the default saver handles all three.
+    var selectedUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedDevice by rememberSaveable { mutableStateOf<UsbDevice?>(null) }
+    var eraseFirst by rememberSaveable { mutableStateOf(false) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -136,9 +140,17 @@ fun RecoveryApp() {
                 )
             }
             composable(Route.SelectModel.pattern) {
-                SelectModelScreen(onNext = { modelName ->
-                    navController.navigate(Route.SelectChannel.forModel(modelName))
-                })
+                SelectModelScreen(
+                    onNext = { modelName ->
+                        navController.navigate(Route.SelectChannel.forModel(modelName))
+                    },
+                    onImageSelected = { modelUrl ->
+                        // Expanded widths pick the channel in the detail pane, so the
+                        // separate channel step is skipped entirely.
+                        selectedUrl = modelUrl
+                        navController.navigate(Route.SelectDrive.pattern)
+                    }
+                )
             }
             composable(Route.SelectChannel.pattern) { backStackEntry ->
                 val modelName = Uri.decode(backStackEntry.arguments?.getString(Route.ARG_MODEL_NAME) ?: "")

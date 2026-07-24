@@ -59,6 +59,8 @@
     <string name="select_model_body">Select the manufacturer and product.</string>
     <string name="select_model_manufacturer_label">Select a manufacturer</string>
     <string name="select_model_product_label">Select a product</string>
+    <string name="select_model_search">Search models</string>
+    <string name="select_model_pick_prompt">Select a model from the list to see available channels.</string>
 
     <!-- Select channel screen -->
     <string name="select_channel_title">Select a channel</string>
