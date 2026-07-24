@@ -16,7 +16,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.chrome.recovery.MainActivity
 import com.google.chrome.recovery.R
-import java.util.Locale
 
 /**
  * Owns every notification and foreground-service concern of the flash flow.
@@ -129,7 +128,9 @@ class FlashNotificationController(private val context: Context) {
             Phase.VERIFYING -> context.getString(R.string.notif_verifying_chip)
             Phase.FLASHING -> shortChipTexts[wordIndex]
         }
-        val text = String.format(Locale.US, context.getString(R.string.notif_percent_complete), progress * 100)
+        // getString formats with the resource configuration's locale, so decimal
+        // separators follow the user's language instead of being pinned to US.
+        val text = context.getString(R.string.notif_percent_complete, progress * 100)
 
         val notification = buildProgressNotification(progress, title, text, chipText)
         KeepAliveService.currentNotification = notification
